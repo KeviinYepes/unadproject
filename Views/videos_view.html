@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Video Training Page</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1b2837",
+                        "text-primary-light": "#0d141b",
+                        "text-primary-dark": "#e7edf3",
+                        "text-secondary-light": "#4c739a",
+                        "text-secondary-dark": "#a1b8d2",
+                        "border-light": "#e7edf3",
+                        "border-dark": "#36485e"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24
+        }
+    </style>
+</head>
+
+<body
+    class="font-display bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark">
+    <div class="relative flex min-h-screen w-full flex-col">
+        <!-- TopNavBar -->
+        <header
+            class="sticky top-0 z-10 w-full border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark/80 backdrop-blur-sm">
+            <div class="mx-auto flex max-w-7xl items-center justify-between whitespace-nowrap px-6 py-3">
+                <div class="flex items-center gap-4">
+                    <div class="size-6 text-primary">
+                        <svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path clip-rule="evenodd"
+                                d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z"
+                                fill="currentColor" fill-rule="evenodd"></path>
+                            <path clip-rule="evenodd"
+                                d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z"
+                                fill="currentColor" fill-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <h2
+                        class="text-lg font-bold tracking-[-0.015em] text-text-primary-light dark:text-text-primary-dark">
+                        Corporate Portal</h2>
+                </div>
+                <button
+                    class="flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-border-light dark:bg-border-dark text-text-primary-light dark:text-text-primary-dark">
+                    <span class="material-symbols-outlined text-2xl">person</span>
+                </button>
+            </div>
+        </header>
+        <main class="w-full grow">
+            <div class="mx-auto max-w-7xl px-6 py-8">
+                <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                    <!-- Main Content -->
+                    <div class="flex flex-col gap-6 lg:col-span-2">
+                        <!-- Breadcrumbs -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a class="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary dark:hover:text-primary"
+                                href="#">Training</a>
+                            <span
+                                class="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">/</span>
+                            <a class="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary dark:hover:text-primary"
+                                href="#">New Hire Onboarding</a>
+                            <span
+                                class="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">/</span>
+                            <span
+                                class="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">Mastering
+                                the New CRM</span>
+                        </div>
+                        <!-- Page Heading -->
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            <h1
+                                class="text-4xl font-black leading-tight tracking-[-0.033em] text-text-primary-light dark:text-text-primary-dark">
+                                Video Training: Mastering the New CRM</h1>
+                            <button
+                                class="flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                                <span>Mark as Complete</span>
+                            </button>
+                        </div>
+                        <!-- Media Player -->
+                        <div>
+                            <div class="relative flex aspect-video items-center justify-center rounded-xl bg-gray-900 bg-cover bg-center"
+                                data-alt="Abstract gradient background for video placeholder"
+                                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAV5PDpOEhRBiPG1WXQ686HFqdHRPRUW6mZszDxuK_NoDYgNxyDt0xPqCZ78sty9W0SOCALE4kfnEuu2K-LE0G5fBc6ebiPj7gXgywka8J64YWyL6kMOhVt2nshsBJpkskjFUQSs8iDhyqN9vKJwmuhN6_iep6vWTMAIac_GFT2Wz1eagNaKiX-b3TuKNUm02GHB6_mUbBm6G8got6QmWCPy5-ZS7pu1tl_7iX_C4xwsFlvfwxXIAumAluH13LS2biAVaYqfjx-Jh0q');">
+                                <button
+                                    class="flex size-16 shrink-0 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-transform hover:scale-105">
+                                    <span class="material-symbols-outlined !text-4xl"
+                                        style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                                </button>
+                                <div class="absolute inset-x-0 bottom-0 px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-1.5 flex-1 rounded-full bg-white/30">
+                                            <div class="h-full w-1/4 rounded-full bg-white"></div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-xs font-medium text-white">0:37</p>
+                                            <span class="text-xs font-medium text-white/70">/</span>
+                                            <p class="text-xs font-medium text-white/70">2:23</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Content Section -->
+                        <div
+                            class="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm">
+                            <h2
+                                class="pb-4 text-[22px] font-bold leading-tight tracking-[-0.015em] text-text-primary-light dark:text-text-primary-dark">
+                                About This Training</h2>
+                            <div
+                                class="prose prose-base dark:prose-invert max-w-none text-text-secondary-light dark:text-text-secondary-dark">
+                                <p>This session provides a comprehensive walkthrough of our new Customer Relationship
+                                    Management (CRM) platform. We will cover the essential features you need to manage
+                                    your client interactions effectively, from initial contact to ongoing support.
+                                    Understanding this tool is crucial for streamlining our sales process and improving
+                                    customer satisfaction.</p>
+                                <h3 class="dark:text-text-primary-dark">Key Takeaways:</h3>
+                                <ul>
+                                    <li><strong>Dashboard Navigation:</strong> Learn how to customize your dashboard to
+                                        see the most relevant information at a glance.</li>
+                                    <li><strong>Contact Management:</strong> Master the process of adding, updating, and
+                                        segmenting your contacts for targeted communication.</li>
+                                    <li><strong>Pipeline Tracking:</strong> Understand how to track deals through every
+                                        stage of the sales pipeline, ensuring no opportunity is missed.</li>
+                                    <li><strong>Reporting &amp; Analytics:</strong> Discover how to generate reports to
+                                        analyze your performance and identify areas for improvement.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- Discussion Section -->
+                        <div
+                            class="rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm">
+                            <h2
+                                class="pb-4 text-[22px] font-bold leading-tight tracking-[-0.015em] text-text-primary-light dark:text-text-primary-dark">
+                                Questions &amp; Discussion</h2>
+                            <div class="flex flex-col gap-6">
+                                <!-- New Comment Form -->
+                                <div class="flex items-start gap-4">
+                                    <div
+                                        class="size-10 flex-shrink-0 rounded-full bg-border-light dark:bg-border-dark flex items-center justify-center">
+                                        <span
+                                            class="material-symbols-outlined text-text-secondary-light dark:text-text-secondary-dark">person</span>
+                                    </div>
+                                    <div class="w-full">
+                                        <textarea
+                                            class="w-full rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-sm placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark focus:border-primary focus:ring-primary"
+                                            placeholder="Have a question? Post it here." rows="3"></textarea>
+                                        <button
+                                            class="mt-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90">
+                                            <span>Submit Question</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Separator -->
+                                <hr class="border-border-light dark:border-border-dark" />
+                                <!-- Comment Thread -->
+                                <div class="flex flex-col gap-6">
+                                    <!-- Comment 1 -->
+                                    <div class="flex items-start gap-4">
+                                        <div
+                                            class="size-10 flex-shrink-0 rounded-full bg-border-light dark:bg-border-dark flex items-center justify-center">
+                                            <img alt="Avatar of Jane Doe" class="rounded-full"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAug_LwuG7lf0E25iFZrPCeS2iOvCNDpEvtMeuiE2Z3gOckVwCZIy2Ojh-f7j4yhnkVFaRSMq69XCjccOJ1Q2b1HqGHJWy8mZM1dZ6diKCeKOidb6qIQMRS-IhGpc4lf1300Gpl6tk5oiXAhpL4Pb96MY4WRsFBntvK20echA81aub3LRU4xnMKxzRJasSV_BnhG-mBG4wN2cD_KsbnpcviVPmro9EhSZFqCD1MvEhLTiMWiT8p6YG--PE3p4WP1gCOwuPV-UJf7hhB" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <div class="flex items-center gap-2">
+                                                <p class="font-bold text-sm">Jane Doe</p>
+                                                <p
+                                                    class="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                                                    2 hours ago</p>
+                                            </div>
+                                            <p
+                                                class="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                                                Is it possible to integrate this CRM with our existing email marketing
+                                                tool? Great training, by the way!</p>
+                                        </div>
+                                    </div>
+                                    <!-- Comment 2 -->
+                                    <div class="flex items-start gap-4">
+                                        <div
+                                            class="size-10 flex-shrink-0 rounded-full bg-border-light dark:bg-border-dark flex items-center justify-center">
+                                            <img alt="Avatar of John Smith" class="rounded-full"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCq7Qg9IKyMzLqEVpxhLWghLYQX5AWTHAYeOPKCzJyTqmdDKwJ0VEl7lOWIRy8HT4T67KhOJChMeARkcIhAJX--uDVkvAPklZEedEOPanBTmH2koppJxETHxqEnH38mZ1sAgi2-lTws8uVNwjMnLqaU-ZxY-e9bk-7uCgRnyAvOgdaADVgPYlf7FijINRFMClWmiIMnIAx36zAmQmIcnBsE9zVzRIeKJT334_5lUeh5lfAWyptyrbcn--_LjiF4BBg-a35epU48kD95" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <div class="flex items-center gap-2">
+                                                <p class="font-bold text-sm">John Smith</p>
+                                                <p
+                                                    class="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                                                    1 hour ago</p>
+                                            </div>
+                                            <p
+                                                class="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                                                How do we handle duplicate contacts? Is there an automatic merge
+                                                feature?</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sidebar -->
+                    <aside class="lg:col-span-1">
+                        <div
+                            class="sticky top-24 rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm">
+                            <h3
+                                class="pb-4 text-lg font-bold leading-tight tracking-[-0.015em] text-text-primary-light dark:text-text-primary-dark">
+                                Related Forms &amp; Documents</h3>
+                            <div class="flex flex-col gap-2">
+                                <a class="group flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20"
+                                    href="#">
+                                    <div
+                                        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                                        <span class="material-symbols-outlined text-base">description</span>
+                                    </div>
+                                    <span
+                                        class="text-sm font-medium text-text-primary-light dark:text-text-primary-dark group-hover:text-primary dark:group-hover:text-primary">CRM
+                                        Usage Policy.pdf</span>
+                                </a>
+                                <a class="group flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20"
+                                    href="#">
+                                    <div
+                                        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                                        <span class="material-symbols-outlined text-base">description</span>
+                                    </div>
+                                    <span
+                                        class="text-sm font-medium text-text-primary-light dark:text-text-primary-dark group-hover:text-primary dark:group-hover:text-primary">Data
+                                        Entry Guidelines.docx</span>
+                                </a>
+                                <a class="group flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-primary/10 dark:hover:bg-primary/20"
+                                    href="#">
+                                    <div
+                                        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                                        <span class="material-symbols-outlined text-base">description</span>
+                                    </div>
+                                    <span
+                                        class="text-sm font-medium text-text-primary-light dark:text-text-primary-dark group-hover:text-primary dark:group-hover:text-primary">Support
+                                        Request Form</span>
+                                </a>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>
