@@ -1,14 +1,13 @@
 import { NavLink } from 'react-router-dom';
 
 export default function Sidebar() {
+  
   const navItems = [
-    { path: '/main', icon: 'dashboard', label: 'Dashboard' },
-    { path: '#', icon: 'groups', label: 'HR' },
-    { path: '#', icon: 'account_balance_wallet', label: 'Finance' },
-    { path: '#', icon: 'gavel', label: 'Legal' },
-    { path: '#', icon: 'headset_mic', label: 'IT Support' },
-    { path: '/foro', icon: 'forum', label: 'Forum' },
-  ];
+  { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin' },
+  { path: '/admin/users', icon: 'group', label: 'Usuarios' },
+  { path: '/admin/videos', icon: 'video_library', label: 'Videos' },
+  { path: '/foro', icon: 'forum', label: 'Foro' },
+];
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border-light bg-card-light p-4 dark:border-border-dark dark:bg-card-dark">
