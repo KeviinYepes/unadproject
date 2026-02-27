@@ -1,0 +1,145 @@
+package com.unad.project_video_platform.service;
+
+import com.unad.project_video_platform.entity.User;
+import com.unad.project_video_platform.repository.UserRepository;
+import com.unad.project_video_platform.service.impl.IUserService;
+import com.unad.project_video_platform.repository.RoleRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class UserService implements IUserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    /**
+     * Obtiene todos los usuarios
+     */
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    /**
+     * Obtiene un usuario por ID
+     */
+    public Optional<User> getUserById(Integer id) {
+        return userRepository.findById(id);
+    }
+
+    /**
+     * Obtiene un usuario por email
+     */
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Obtiene un usuario por número de documento
+     */
+    public Optional<User> getUserByDocumentNumber(String documentNumber) {
+        return userRepository.findByDocumentNumber(documentNumber);
+    }
+
+    /**
+     * Obtiene usuarios por rol
+     */
+    public List<User> getUsersByRoleId(Integer roleId) {
+        return userRepository.findByRoleId(roleId);
+    }
+
+    /**
+     * Crea un nuevo usuario
+     */
+    @Transactional
+    public User createUser(User user) {
+        if (user.getDocumentNumber() == null || user.getDocumentNumber().isBlank()) {
+            throw new IllegalArgumentException("El número de documento es obligatorio");
+        }
+        // Validar email único
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new IllegalArgumentException("Ya existe un usuario con el email: " + user.getEmail());
+        }
+
+        // Validar documento único
+        if (userRepository.existsByDocumentNumber(user.getDocumentNumber())) {
+            throw new IllegalArgumentException("Ya existe un usuario con el número de documento: " + user.getDocumentNumber());
+        }
+
+        // Validar que el rol existe si se proporciona
+        if (user.getRole() != null && user.getRole().getId() != null) {
+            roleRepository.findById(user.getRole().getId())
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado con id: " + user.getRole().getId()));
+        }
+
+        return userRepository.save(user);
+    }
+
+    /**
+     * Actualiza un usuario existente
+     */
+    @Transactional
+    public User updateUser(Integer id, User userDetails) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+
+        // Validar email único (si cambió)
+        if (!user.getEmail().equals(userDetails.getEmail()) && 
+            userRepository.existsByEmail(userDetails.getEmail())) {
+            throw new IllegalArgumentException("Ya existe un usuario con el email: " + userDetails.getEmail());
+        }
+
+        // Validar documento único (si cambió)
+        if (!user.getDocumentNumber().equals(userDetails.getDocumentNumber()) && 
+            userRepository.existsByDocumentNumber(userDetails.getDocumentNumber())) {
+            throw new IllegalArgumentException("Ya existe un usuario con el número de documento: " + userDetails.getDocumentNumber());
+        }
+
+        // Validar que el rol existe si se proporciona
+        if (userDetails.getRole() != null && userDetails.getRole().getId() != null) {
+            roleRepository.findById(userDetails.getRole().getId())
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado con id: " + userDetails.getRole().getId()));
+        }
+
+        user.setRole(userDetails.getRole());
+        user.setFirstName(userDetails.getFirstName());
+        user.setLastName(userDetails.getLastName());
+        user.setDocumentType(userDetails.getDocumentType());
+        user.setDocumentNumber(userDetails.getDocumentNumber());
+        user.setEmail(userDetails.getEmail());
+
+        return userRepository.save(user);
+    }
+
+    /**
+     * Elimina un usuario por ID
+     */
+    @Transactional
+    public void deleteUser(Integer id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("Usuario no encontrado con id: " + id);
+        }
+        userRepository.deleteById(id);
+    }
+
+    /**
+     * Verifica si existe un usuario por email
+     */
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    /**
+     * Verifica si existe un usuario por número de documento
+     */
+    public boolean existsByDocumentNumber(String documentNumber) {
+        return userRepository.existsByDocumentNumber(documentNumber);
+    }
+}
