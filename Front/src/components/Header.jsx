@@ -28,20 +28,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between whitespace-nowrap border-b border-border-light bg-card-light px-8 dark:border-border-dark dark:bg-card-dark">
-      <div className="flex items-center gap-8">
-        <label className="relative flex min-w-40 max-w-64">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <span className="material-symbols-outlined text-xl text-text-light-secondary dark:text-dark-secondary">
-              search
-            </span>
-          </div>
-          <input
-            className="form-input h-10 w-full flex-1 rounded-lg border-none bg-background-light pl-10 text-sm placeholder:text-text-light-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-background-dark dark:placeholder:text-dark-secondary"
-            placeholder="Search tutorials..."
-            type="search"
-          />
-        </label>
-      </div>
+      <div />
       <div className="flex items-center gap-4">
         <button className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary">
           <span className="material-symbols-outlined text-2xl">notifications</span>
