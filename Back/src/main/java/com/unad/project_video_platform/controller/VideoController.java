@@ -1,4 +1,4 @@
-﻿package com.unad.project_video_platform.controller;
+package com.unad.project_video_platform.controller;
 
 import com.unad.project_video_platform.dto.ApiResponse;
 import com.unad.project_video_platform.entity.Video;

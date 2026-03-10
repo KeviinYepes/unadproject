@@ -1,6 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
+import VideoService from "../services/VideoService";
 
 const VideosAdmin = () => {
+  const navigate = useNavigate();
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [editingVideo, setEditingVideo] = useState(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -11,6 +18,25 @@ const VideosAdmin = () => {
 
   const [tags, setTags] = useState(["Capacitación"]);
   const [newTag, setNewTag] = useState("");
+
+  /* ================== CARGAR VIDEOS ================== */
+  useEffect(() => {
+    cargarVideos();
+  }, []);
+
+  const cargarVideos = async () => {
+    try {
+      setLoading(true);
+      const data = await VideoService.getAll();
+      setVideos(data);
+      setError("");
+    } catch (error) {
+      console.error("Error cargando videos:", error);
+      setError("Error al cargar videos. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -33,18 +59,78 @@ const VideosAdmin = () => {
   };
 
   const handleSubmit = async () => {
-    try {
-      await fetch("/api/videos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, tags }),
-      });
+    setLoading(true);
+    setError("");
 
-      alert("Video publicado correctamente");
+    try {
+      const videoData = { ...form, tags };
+
+      if (editingVideo) {
+        // Actualizar video existente
+        await VideoService.update(editingVideo.id, videoData);
+        alert("Video actualizado correctamente");
+      } else {
+        // Crear nuevo video
+        await VideoService.create(videoData);
+        alert("Video publicado correctamente");
+      }
+
+      resetForm();
+      cargarVideos();
     } catch (err) {
       console.error(err);
-      alert("Error al publicar el video");
+      setError(err.response?.data?.message || "Error al guardar el video");
+      alert("Error al guardar el video: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleEdit = (video) => {
+    setEditingVideo(video);
+    setForm({
+      title: video.title || "",
+      description: video.description || "",
+      url: video.url || "",
+      visibility: video.visibility || "internal",
+      commentsEnabled: video.commentsEnabled || false,
+    });
+    setTags(video.tags || ["Capacitación"]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("¿Estás seguro de eliminar este video?")) return;
+
+    try {
+      setLoading(true);
+      await VideoService.delete(id);
+      alert("Video eliminado correctamente");
+      cargarVideos();
+    } catch (error) {
+      console.error(error);
+      alert("Error al eliminar video: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setEditingVideo(null);
+    setForm({
+      title: "",
+      description: "",
+      url: "",
+      visibility: "internal",
+      commentsEnabled: false,
+    });
+    setTags(["Capacitación"]);
+    setNewTag("");
+  };
+
+  const handleDiscard = () => {
+    resetForm();
+    navigate('/admin/videos');
   };
 
   return (
@@ -55,7 +141,7 @@ const VideosAdmin = () => {
         <div className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
-              Subir Nuevo Video
+              {editingVideo ? "Editar Video" : "Subir Nuevo Video"}
             </h2>
             <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
               Completa la información para agregar contenido a la biblioteca.
@@ -63,17 +149,38 @@ const VideosAdmin = () => {
           </div>
 
           <div className="hidden lg:flex gap-4">
-            <button className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark">
+            {editingVideo && (
+              <button
+                onClick={resetForm}
+                className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark"
+                disabled={loading}
+              >
+                Cancelar Edición
+              </button>
+            )}
+            <button
+              onClick={handleDiscard}
+              className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark"
+              disabled={loading}
+            >
               Descartar
             </button>
             <button
               onClick={handleSubmit}
-              className="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-primary/90 transition"
+              disabled={loading}
+              className="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
             >
-              Publicar Video
+              {loading ? "Guardando..." : editingVideo ? "Actualizar Video" : "Publicar Video"}
             </button>
           </div>
         </div>
+
+        {/* Mensaje de error */}
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
 
@@ -90,6 +197,7 @@ const VideosAdmin = () => {
                 value={form.title}
                 onChange={handleChange}
                 placeholder="Ej: Capacitación Seguridad 2026"
+                disabled={loading}
               />
 
               <Textarea
@@ -98,6 +206,7 @@ const VideosAdmin = () => {
                 value={form.description}
                 onChange={handleChange}
                 placeholder="Describe brevemente el contenido del video..."
+                disabled={loading}
               />
 
               {/* Tags */}
@@ -142,6 +251,7 @@ const VideosAdmin = () => {
                 value={form.url}
                 onChange={handleChange}
                 placeholder="YouTube, Vimeo o enlace interno"
+                disabled={loading}
               />
 
               <div className="border-2 border-dashed border-border-light dark:border-border-dark rounded-xl p-8 text-center cursor-pointer hover:border-primary transition">
@@ -218,15 +328,95 @@ const VideosAdmin = () => {
 
         {/* Footer Mobile */}
         <div className="lg:hidden flex gap-4 mt-8">
-          <button className="flex-1 bg-surface-light dark:bg-surface-dark py-3 rounded-lg font-bold">
+          <button
+            onClick={handleDiscard}
+            className="flex-1 bg-surface-light dark:bg-surface-dark py-3 rounded-lg font-bold"
+            disabled={loading}
+          >
             Descartar
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 bg-primary text-white py-3 rounded-lg font-bold"
+            disabled={loading}
+            className="flex-1 bg-primary text-white py-3 rounded-lg font-bold disabled:opacity-50"
           >
-            Publicar
+            {loading ? "Guardando..." : "Publicar"}
           </button>
+        </div>
+
+        {/* ================= LISTA DE VIDEOS ================= */}
+        <div className="mt-12 bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border-light dark:border-border-dark">
+            <h2 className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+              Videos Publicados
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-surface-light dark:bg-surface-dark text-xs uppercase font-bold tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
+                <tr>
+                  <th className="px-6 py-3">Título</th>
+                  <th className="px-6 py-3">URL</th>
+                  <th className="px-6 py-3">Visibilidad</th>
+                  <th className="px-6 py-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && videos.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
+                      Cargando videos...
+                    </td>
+                  </tr>
+                ) : videos.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
+                      No hay videos publicados aún.
+                    </td>
+                  </tr>
+                ) : (
+                  videos.map((video) => (
+                    <tr
+                      key={video.id}
+                      className="border-b border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-background-dark transition"
+                    >
+                      <td className="px-6 py-4 font-semibold">{video.title}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <a
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {video.url?.substring(0, 40)}...
+                        </a>
+                      </td>
+                      <td className="px-6 py-4 capitalize">{video.visibility}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(video)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                            disabled={loading}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(video.id)}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-semibold"
+                            disabled={loading}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -244,17 +434,17 @@ const SectionTitle = ({ icon, title }) => (
   </div>
 );
 
-const Input = ({ label, ...props }) => (
+const Input = ({ label, disabled = false, ...props }) => (
   <div className="flex flex-col gap-2">
     <label className="label">{label}</label>
-    <input {...props} className="input" />
+    <input {...props} className="input" disabled={disabled} />
   </div>
 );
 
-const Textarea = ({ label, ...props }) => (
+const Textarea = ({ label, disabled = false, ...props }) => (
   <div className="flex flex-col gap-2">
     <label className="label">{label}</label>
-    <textarea {...props} rows="4" className="input" />
+    <textarea {...props} rows="4" className="input" disabled={disabled} />
   </div>
 );
 

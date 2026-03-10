@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
 
 const AdminDashboard = () => {
   const [metricas, setMetricas] = useState({
@@ -35,8 +37,12 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        <Header />
+        <main className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto">
 
         {/* Encabezado */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
@@ -148,6 +154,8 @@ const AdminDashboard = () => {
           </div>
 
         </div>
+          </div>
+        </main>
       </div>
     </div>
   );

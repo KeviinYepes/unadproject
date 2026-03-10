@@ -1,12 +1,39 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AuthService from '../services/AuthService';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: '',
+    documentNumber: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Lógica de autenticación aquí
-    navigate('/main');
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await AuthService.login(formData);
+      navigate('/main');
+    } catch (err) {
+      console.error('Error de login:', err);
+      setError(err.message || 'Credenciales inválidas. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,8 +92,14 @@ export default function Login() {
                   </div>
                 </div>
 
-                {/* Formulario de acceso */}
                 <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit}>
+                  {/* Mensaje de error */}
+                  {error && (
+                    <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
+                      <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                    </div>
+                  )}
+
                   {/* Correo Electrónico */}
                   <label className="flex w-full flex-col">
                     <p className="pb-2 text-sm font-medium leading-normal text-[#101922] dark:text-slate-300">
@@ -81,41 +114,53 @@ export default function Login() {
                         className="form-input h-12 w-full min-w-0 flex-1 rounded-lg rounded-l-none border border-l-0 border-slate-300 bg-background-light p-3 text-base font-normal text-[#101922] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-background-dark dark:text-white"
                         placeholder="tu@correo.com"
                         name="email"
+                        value={formData.email}
+                        onChange={handleChange}
                         required
+                        disabled={loading}
                       />
                     </div>
                   </label>
 
-                  {/* Contraseña */}
+                  {/* Número de Documento */}
                   <label className="flex w-full flex-col">
                     <p className="pb-2 text-sm font-medium leading-normal text-[#101922] dark:text-slate-300">
-                      Contraseña
+                      Número de Documento
                     </p>
                     <div className="flex w-full flex-1 items-stretch rounded-lg">
                       <div className="flex items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-background-light pl-4 text-slate-500 dark:border-slate-700 dark:bg-background-dark">
                         <span className="material-symbols-outlined text-base">lock</span>
                       </div>
                       <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         className="form-input h-12 w-full min-w-0 flex-1 border border-r-0 border-slate-300 bg-background-light p-3 text-base font-normal text-[#101922] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-background-dark dark:text-white"
-                        placeholder="Tu contraseña"
-                        name="password"
+                        placeholder="Tu número de documento"
+                        name="documentNumber"
+                        value={formData.documentNumber}
+                        onChange={handleChange}
                         required
+                        disabled={loading}
                       />
                       <button
                         type="button"
+                        onClick={() => setShowPassword(!showPassword)}
                         className="flex cursor-pointer items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-background-light pr-4 text-slate-500 dark:border-slate-700 dark:bg-background-dark"
                       >
-                        <span className="material-symbols-outlined text-base">visibility</span>
+                        <span className="material-symbols-outlined text-base">
+                          {showPassword ? 'visibility_off' : 'visibility'}
+                        </span>
                       </button>
                     </div>
                   </label>
 
                   <button
                     type="submit"
-                    className="flex h-12 w-full min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-5 text-base font-bold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 dark:focus:ring-offset-background-dark"
+                    disabled={loading}
+                    className="flex h-12 w-full min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-5 text-base font-bold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 dark:focus:ring-offset-background-dark disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="truncate">Iniciar Sesión</span>
+                    <span className="truncate">
+                      {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                    </span>
                   </button>
                   
                   <div className="flex flex-col gap-2">
