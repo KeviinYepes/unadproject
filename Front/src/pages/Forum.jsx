@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
 
 export default function Forum() {
   return (
-    <div className="relative flex min-h-screen w-full font-display bg-background-light text-[#0d141b] dark:bg-background-dark dark:text-slate-200">
+    <div className="flex h-screen w-full font-display bg-background-light text-[#0d141b] dark:bg-background-dark dark:text-slate-200">
       <Sidebar />
-      <main className="flex-1 p-6 lg:p-10">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        <Header />
+        <main className="flex-1 p-6 lg:p-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Columna Izquierda: El Hilo de la Conversación */}
             <div className="flex flex-col gap-6 lg:col-span-2">
               {/* Migas de pan (Breadcrumbs) */}
@@ -219,9 +222,10 @@ export default function Forum() {
                 </div>
               </div>
             </aside>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
