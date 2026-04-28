@@ -6,6 +6,7 @@ export default function Sidebar() {
   { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin' },
   { path: '/admin/users', icon: 'group', label: 'Usuarios' },
   { path: '/admin/roles', icon: 'admin_panel_settings', label: 'Roles' },
+  { path: '/admin/categories', icon: 'category', label: 'Categorias' },
   { path: '/admin/videos', icon: 'video_library', label: 'Videos' },
   { path: '/foro', icon: 'forum', label: 'Foro' },
 ];

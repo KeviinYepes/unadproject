@@ -2,22 +2,22 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Toast from "../components/Toast";
-import RoleService from "../services/RoleService";
+import CategoryService from "../services/CategoryService";
 
-const Roles = () => {
-  const [roles, setRoles] = useState([]);
+const Categories = () => {
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
-  const [editingRole, setEditingRole] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
-    roleName: "",
+    categoryName: "",
     description: "",
   });
 
   useEffect(() => {
-    cargarRoles();
+    cargarCategorias();
   }, []);
 
   useEffect(() => {
@@ -31,19 +31,19 @@ const Roles = () => {
     setToast({ message, type });
   };
 
-  const cargarRoles = async () => {
+  const cargarCategorias = async () => {
     try {
       setLoading(true);
-      const data = await RoleService.getAll();
-      setRoles(data || []);
+      const data = await CategoryService.getAll();
+      setCategories(data || []);
       setError("");
     } catch (error) {
-      console.error("Error cargando roles:", error);
+      console.error("Error cargando categorias:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.response?.data?.error ||
         error.message ||
-        "Error al cargar roles";
+        "Error al cargar categorias";
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -59,9 +59,9 @@ const Roles = () => {
   };
 
   const resetForm = () => {
-    setEditingRole(null);
+    setEditingCategory(null);
     setForm({
-      roleName: "",
+      categoryName: "",
       description: "",
     });
   };
@@ -76,11 +76,11 @@ const Roles = () => {
     resetForm();
   };
 
-  const handleEdit = (role) => {
-    setEditingRole(role);
+  const handleEdit = (category) => {
+    setEditingCategory(category);
     setForm({
-      roleName: role.roleName || "",
-      description: role.description || "",
+      categoryName: category.categoryName || "",
+      description: category.description || "",
     });
     setIsModalOpen(true);
   };
@@ -91,40 +91,44 @@ const Roles = () => {
     setError("");
 
     try {
-      if (editingRole) {
-        await RoleService.update(editingRole.id, form);
-        showToast("Rol actualizado correctamente.");
+      if (editingCategory) {
+        await CategoryService.update(editingCategory.id, form);
+        showToast("Categoria actualizada correctamente.");
       } else {
-        await RoleService.create(form);
-        showToast("Rol creado correctamente.");
+        await CategoryService.create(form);
+        showToast("Categoria creada correctamente.");
       }
 
       resetForm();
-      await cargarRoles();
+      await cargarCategorias();
       setIsModalOpen(false);
     } catch (error) {
       console.error(error);
       const apiMessage = error.response?.data?.error || error.response?.data?.message;
-      const fallbackMessage = error.message || "Error al guardar rol";
+      const fallbackMessage = error.message || "Error al guardar categoria";
       const message = apiMessage || fallbackMessage;
       setError(message);
-      showToast("Error al guardar rol: " + message, "error");
+      showToast("Error al guardar categoria: " + message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("¿Estás seguro de eliminar este rol?")) return;
+    if (!confirm("Estas seguro de eliminar esta categoria?")) return;
 
     try {
       setLoading(true);
-      await RoleService.delete(id);
-      showToast("Rol eliminado correctamente.");
-      await cargarRoles();
+      await CategoryService.delete(id);
+      showToast("Categoria eliminada correctamente.");
+      await cargarCategorias();
     } catch (error) {
       console.error(error);
-      showToast("Error al eliminar rol: " + (error.response?.data?.message || error.message), "error");
+      showToast(
+        "Error al eliminar categoria: " +
+          (error.response?.data?.message || error.response?.data?.error || error.message),
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -141,10 +145,10 @@ const Roles = () => {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
-                  Gestión de Roles
+                  Gestion de Categorias
                 </h1>
                 <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
-                  Administra los roles de la plataforma.
+                  Administra las categorias del contenido de la plataforma.
                 </p>
               </div>
 
@@ -155,7 +159,7 @@ const Roles = () => {
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-lg">add</span>
-                Agregar rol
+                Agregar categoria
               </button>
             </div>
 
@@ -168,7 +172,7 @@ const Roles = () => {
             <div className="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border-light dark:border-border-dark">
                 <h2 className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                  Lista de Roles
+                  Lista de Categorias
                 </h2>
               </div>
 
@@ -176,49 +180,51 @@ const Roles = () => {
                 <table className="w-full text-left">
                   <thead className="bg-surface-light dark:bg-surface-dark text-xs uppercase font-bold tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
                     <tr>
-                      <th className="px-6 py-3">Rol</th>
-                      <th className="px-6 py-3">Descripción</th>
+                      <th className="px-6 py-3">Categoria</th>
+                      <th className="px-6 py-3">Descripcion</th>
                       <th className="px-6 py-3 text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {loading && roles.length === 0 ? (
+                    {loading && categories.length === 0 ? (
                       <tr>
                         <td
                           colSpan="3"
                           className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark"
                         >
-                          Cargando roles...
+                          Cargando categorias...
                         </td>
                       </tr>
-                    ) : roles.length === 0 ? (
+                    ) : categories.length === 0 ? (
                       <tr>
                         <td
                           colSpan="3"
                           className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark"
                         >
-                          No hay roles registrados aún.
+                          No hay categorias registradas aun.
                         </td>
                       </tr>
                     ) : (
-                      roles.map((r) => (
+                      categories.map((category) => (
                         <tr
-                          key={r.id}
+                          key={category.id}
                           className="border-b border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-background-dark transition"
                         >
-                          <td className="px-6 py-4 font-semibold">{String(r.roleName || "")}</td>
-                          <td className="px-6 py-4">{String(r.description || "")}</td>
+                          <td className="px-6 py-4 font-semibold">
+                            {String(category.categoryName || "")}
+                          </td>
+                          <td className="px-6 py-4">{String(category.description || "")}</td>
                           <td className="px-6 py-4">
                             <div className="flex justify-center gap-2">
                               <button
-                                onClick={() => handleEdit(r)}
+                                onClick={() => handleEdit(category)}
                                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
                                 disabled={loading}
                               >
                                 Editar
                               </button>
                               <button
-                                onClick={() => handleDelete(r.id)}
+                                onClick={() => handleDelete(category.id)}
                                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-semibold"
                                 disabled={loading}
                               >
@@ -247,10 +253,10 @@ const Roles = () => {
                   <div className="flex items-start justify-between gap-4 mb-6">
                     <div>
                       <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-                        {editingRole ? "Editar Rol" : "Crear Nuevo Rol"}
+                        {editingCategory ? "Editar Categoria" : "Crear Nueva Categoria"}
                       </h2>
                       <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-                        Completa los datos del rol.
+                        Completa los datos de la categoria.
                       </p>
                     </div>
 
@@ -267,16 +273,16 @@ const Roles = () => {
 
                   <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
                     <Input
-                      label="Nombre del Rol"
-                      name="roleName"
-                      value={form.roleName}
+                      label="Nombre de la Categoria"
+                      name="categoryName"
+                      value={form.categoryName}
                       onChange={handleChange}
                       disabled={loading}
                     />
 
                     <div className="md:col-span-2">
                       <Textarea
-                        label="Descripción"
+                        label="Descripcion"
                         name="description"
                         value={form.description}
                         onChange={handleChange}
@@ -300,7 +306,11 @@ const Roles = () => {
                         disabled={loading}
                         className="px-8 py-2 rounded-lg bg-primary text-white font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
                       >
-                        {loading ? "Guardando..." : editingRole ? "Actualizar Rol" : "Crear Rol"}
+                        {loading
+                          ? "Guardando..."
+                          : editingCategory
+                          ? "Actualizar Categoria"
+                          : "Crear Categoria"}
                       </button>
                     </div>
                   </form>
@@ -328,4 +338,4 @@ const Textarea = ({ label, required = true, disabled = false, rows = 4, ...props
   </div>
 );
 
-export default Roles;
+export default Categories;
