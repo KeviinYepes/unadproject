@@ -9,6 +9,7 @@ import Users from './pages/Users';
 import AdminDashboard from './pages/AdminDashboard';
 import VideosLibrary from './pages/VideosLibrary';
 import Roles from './pages/Roles';
+import Categories from './pages/Categories';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
         <Route path="/admin/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
+        <Route path="/admin/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
         <Route path="/admin/videos" element={<ProtectedRoute><VideosLibrary /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>

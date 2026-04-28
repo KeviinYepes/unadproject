@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import Toast from "../components/Toast";
 import UserService from "../services/UserService";
 import RoleService from "../services/RoleService";
 
@@ -9,6 +10,7 @@ const Users = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
@@ -26,6 +28,17 @@ const Users = () => {
     cargarRoles();
     cargarUsuarios();
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
 
   const cargarUsuarios = async () => {
     try {
@@ -75,11 +88,11 @@ const Users = () => {
       if (editingUser) {
         // Actualizar usuario existente
         await UserService.update(editingUser.id, form);
-        alert("Usuario actualizado correctamente");
+        showToast("Usuario actualizado correctamente.");
       } else {
         // Crear nuevo usuario
         await UserService.create(form);
-        alert("Usuario creado correctamente");
+        showToast("Usuario creado correctamente.");
       }
 
       // Limpiar formulario y recargar
@@ -92,7 +105,7 @@ const Users = () => {
       const fallbackMessage = error.message || "Error al guardar usuario";
       const message = apiMessage || fallbackMessage;
       setError(message);
-      alert("Error al guardar usuario: " + message);
+      showToast("Error al guardar usuario: " + message, "error");
     } finally {
       setLoading(false);
     }
@@ -123,11 +136,11 @@ const Users = () => {
     try {
       setLoading(true);
       await UserService.delete(id);
-      alert("Usuario eliminado correctamente");
+      showToast("Usuario eliminado correctamente.");
       cargarUsuarios();
     } catch (error) {
       console.error(error);
-      alert("Error al eliminar usuario: " + (error.response?.data?.message || error.message));
+      showToast("Error al eliminar usuario: " + (error.response?.data?.message || error.message), "error");
     } finally {
       setLoading(false);
     }
@@ -153,6 +166,7 @@ const Users = () => {
 
   return (
     <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
+      <Toast message={toast?.message} type={toast?.type} onClose={() => setToast(null)} />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-y-auto">
         <Header />
