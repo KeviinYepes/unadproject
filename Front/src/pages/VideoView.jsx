@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import TopNavBar from '../components/TopNavBar';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
 
 export default function VideoView() {
   const location = useLocation();
@@ -10,37 +11,18 @@ export default function VideoView() {
   const defaultCategory = "Impuestos";
 
   return (
-    <div className="font-display bg-background-light text-[#0d141b] dark:bg-background-dark dark:text-slate-200 transition-colors duration-300">
-      <div className="relative flex min-h-screen w-full flex-col">
-        <TopNavBar />
-        
-        <main className="w-full grow">
-          <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        <Header />
+        <main className="flex-1 p-8">
+          <div className="mx-auto max-w-7xl">
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               
               {/* Contenido Principal: Video y Detalles */}
               <div className="flex flex-col gap-6 lg:col-span-2">
-                
-                {/* Migas de pan (Breadcrumbs) */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    to="/tutorials"
-                    className="text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400"
-                  >
-                    Tutoriales
-                  </Link>
-                  <span className="material-symbols-outlined text-base text-slate-400">chevron_right</span>
-                  <Link
-                    to="#"
-                    className="text-sm font-medium text-slate-500 hover:text-primary dark:text-slate-400"
-                  >
-                    {tutorial.category || defaultCategory}
-                  </Link>
-                  <span className="material-symbols-outlined text-base text-slate-400">chevron_right</span>
-                  <span className="text-sm font-medium text-[#0d141b] dark:text-slate-200">
-                    {tutorial.title || defaultTitle}
-                  </span>
-                </div>
+
+                {/* Navegación (breadcrumb) removida por requerimiento */}
 
                 {/* Encabezado de la Página */}
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -49,13 +31,9 @@ export default function VideoView() {
                       {tutorial.title || defaultTitle}
                     </h1>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Actualizado hace 2 días • Duración: 15:20 min
+                      {tutorial.category || defaultCategory}
                     </p>
                   </div>
-                  <button className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 active:scale-95">
-                    <span className="material-symbols-outlined text-lg">check_circle</span>
-                    <span>Marcar Completado</span>
-                  </button>
                 </div>
 
                 {/* Reproductor de Video Personalizado */}
@@ -130,7 +108,7 @@ export default function VideoView() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-[#0d141b] dark:text-white">Dudas y Discusión</h2>
-                    <Link to="/forum" className="text-sm font-bold text-primary hover:underline">Ver foro completo</Link>
+                    <Link to="/foro" className="text-sm font-bold text-primary hover:underline">Ver foro completo</Link>
                   </div>
                   
                   <div className="flex flex-col gap-6">
@@ -164,7 +142,7 @@ export default function VideoView() {
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 italic">
                           "En el minuto 4:15 no me aparece el botón de adjuntar..."
                         </p>
-                        <Link to="/forum" className="mt-2 inline-block text-xs font-bold text-primary">
+                        <Link to="/foro" className="mt-2 inline-block text-xs font-bold text-primary">
                           Ver respuesta experta (1)
                         </Link>
                       </div>
@@ -202,21 +180,6 @@ export default function VideoView() {
                       </button>
                     </div>
                   </div>
-
-                  {/* Siguientes Pasos */}
-                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 dark:bg-primary/10">
-                    <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-primary">Siguiente Lección</h3>
-                    <div className="group cursor-pointer">
-                      <p className="text-base font-bold text-[#0d141b] group-hover:text-primary dark:text-white transition-colors">
-                        Manejo de requerimientos especiales
-                      </p>
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs font-medium text-slate-500">Duración: 08:45 min</span>
-                        <span className="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
               </aside>
 

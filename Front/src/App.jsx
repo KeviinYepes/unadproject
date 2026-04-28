@@ -6,9 +6,9 @@ import Forum from './pages/Forum';
 import VideoView from './pages/VideoView';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
-import VideosAdmin from './pages/VideosAdmin';
 import AdminDashboard from './pages/AdminDashboard';
 import VideosLibrary from './pages/VideosLibrary';
+import Roles from './pages/Roles';
 
 function App() {
   return (
@@ -26,8 +26,8 @@ function App() {
         {/* Rutas administrativas protegidas */}
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+        <Route path="/admin/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
         <Route path="/admin/videos" element={<ProtectedRoute><VideosLibrary /></ProtectedRoute>} />
-        <Route path="/admin/videos/agregar" element={<ProtectedRoute><VideosAdmin /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

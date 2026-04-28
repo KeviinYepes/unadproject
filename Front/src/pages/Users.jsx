@@ -10,6 +10,7 @@ const Users = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editingUser, setEditingUser] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -84,6 +85,7 @@ const Users = () => {
       // Limpiar formulario y recargar
       resetForm();
       cargarUsuarios();
+      setIsModalOpen(false);
     } catch (error) {
       console.error(error);
       const apiMessage = error.response?.data?.error || error.response?.data?.message;
@@ -107,7 +109,12 @@ const Users = () => {
       roleId: usuario.role?.id || "",
       active: usuario.active !== undefined ? usuario.active : true,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenCreate = () => {
+    resetForm();
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -139,6 +146,11 @@ const Users = () => {
     });
   };
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    resetForm();
+  };
+
   return (
     <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
       <Sidebar />
@@ -147,214 +159,251 @@ const Users = () => {
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto space-y-12">
 
-        {/* ================= HEADER ================= */}
-        <div>
-          <h1 className="text-3xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
-            Gestión de Usuarios
-          </h1>
-          <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
-            Administra los usuarios registrados en la plataforma.
-          </p>
-        </div>
-
-        {/* Mensaje de error global */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
-
-        {/* ================= FORMULARIO ================= */}
-        <div className="bg-card-light dark:bg-card-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
-          <h2 className="text-lg font-bold mb-6 text-text-primary-light dark:text-text-primary-dark">
-            {editingUser ? "Editar Usuario" : "Crear Nuevo Usuario"}
-          </h2>
-
-          <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
-
-            <Input
-              label="Nombre"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              disabled={loading}
-            />
-
-            <Input
-              label="Apellido"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              disabled={loading}
-            />
-
-            <Input
-              label="Correo Electrónico"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              disabled={loading}
-            />
-
-            <Select
-              label="Tipo de Documento"
-              name="documentType"
-              value={form.documentType}
-              onChange={handleChange}
-              options={[
-                { value: "CC", label: "Cédula de Ciudadanía" },
-                { value: "TI", label: "Tarjeta de Identidad" },
-                { value: "CE", label: "Cédula de Extranjería" },
-                { value: "PA", label: "Pasaporte" }
-              ]}
-              disabled={loading}
-            />
-
-            <Input
-              label="Número de Documento"
-              name="documentNumber"
-              value={form.documentNumber}
-              onChange={handleChange}
-              disabled={loading}
-              placeholder="Se usa como método de autenticación"
-            />
-
-            <Select
-              label="Rol"
-              name="roleId"
-              value={form.roleId}
-              onChange={handleChange}
-              options={roles.map(r => ({ value: r.id, label: r.roleName || r.name }))}
-              disabled={loading}
-            />
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                name="active"
-                checked={form.active}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-4 h-4 text-primary focus:ring-primary"
-              />
-              <label className="text-sm font-semibold">Usuario Activo</label>
-            </div>
-
-            <div className="md:col-span-2 flex justify-end gap-4 mt-4">
-              {editingUser && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-6 py-2 rounded-lg bg-surface-light dark:bg-surface-dark font-semibold"
-                  disabled={loading}
-                >
-                  Cancelar Edición
-                </button>
-              )}
+            {/* ================= HEADER ================= */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-3xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
+                  Gestión de Usuarios
+                </h1>
+                <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
+                  Administra los usuarios registrados en la plataforma.
+                </p>
+              </div>
 
               <button
-                type="submit"
+                type="button"
+                onClick={handleOpenCreate}
                 disabled={loading}
-                className="px-8 py-2 rounded-lg bg-primary text-white font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-50"
               >
-                {loading ? "Guardando..." : editingUser ? "Actualizar Usuario" : "Crear Usuario"}
+                <span className="material-symbols-outlined text-lg">add</span>
+                Agregar usuario
               </button>
             </div>
-          </form>
-        </div>
 
-        {/* ================= TABLA ================= */}
-        <div className="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-border-light dark:border-border-dark">
-            <h2 className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-              Lista de Usuarios
-            </h2>
-          </div>
+            {/* Mensaje de error global */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+                <p className="text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-surface-light dark:bg-surface-dark text-xs uppercase font-bold tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
-                <tr>
-                  <th className="px-6 py-3">Nombre Completo</th>
-                  <th className="px-6 py-3">Correo</th>
-                  <th className="px-6 py-3">Documento</th>
-                  <th className="px-6 py-3">Rol</th>
-                  <th className="px-6 py-3">Estado</th>
-                  <th className="px-6 py-3 text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && usuarios.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
-                      Cargando usuarios...
-                    </td>
-                  </tr>
-                ) : usuarios.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
-                      No hay usuarios registrados aún.
-                    </td>
-                  </tr>
-                ) : (
-                  usuarios.map((u) => {
-                    // Encontrar el nombre del rol - puede venir como objeto con roleName
-                    let roleName = 'Sin rol';
-                    
-                    // Si role es un objeto con roleName
-                    if (u.role && typeof u.role === 'object' && u.role.roleName) {
-                      roleName = u.role.roleName;
-                    } 
-                    // Si role es un ID numérico
-                    else if (typeof u.role === 'number' && u.role !== 0) {
-                      roleName = roles.find(r => r.id === u.role)?.roleName || 'Sin rol';
-                    } 
-                    // Si roleId existe
-                    else if (u.roleId && typeof u.roleId === 'number') {
-                      roleName = roles.find(r => r.id === u.roleId)?.roleName || 'Sin rol';
-                    }
-                    
-                    return (
-                    <tr
-                      key={u.id}
-                      className="border-b border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-background-dark transition"
-                    >
-                      <td className="px-6 py-4 font-semibold">
-                        {String(u.firstName || '')} {String(u.lastName || '')}
-                      </td>
-                      <td className="px-6 py-4">{String(u.email || '')}</td>
-                      <td className="px-6 py-4">{String(u.documentNumber || 'N/A')}</td>
-                      <td className="px-6 py-4">{String(roleName)}</td>
-                      <td className="px-6 py-4">
-                        <EstadoBadge estado={u.active ? "Activo" : "Inactivo"} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(u)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
-                            disabled={loading}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDelete(u.id)}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-semibold"
-                            disabled={loading}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
+            {/* ================= TABLA (PRIMERO) ================= */}
+            <div className="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-border-light dark:border-border-dark">
+                <h2 className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                  Lista de Usuarios
+                </h2>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-surface-light dark:bg-surface-dark text-xs uppercase font-bold tracking-wider text-text-secondary-light dark:text-text-secondary-dark">
+                    <tr>
+                      <th className="px-6 py-3">Nombre Completo</th>
+                      <th className="px-6 py-3">Correo</th>
+                      <th className="px-6 py-3">Documento</th>
+                      <th className="px-6 py-3">Rol</th>
+                      <th className="px-6 py-3">Estado</th>
+                      <th className="px-6 py-3 text-center">Acciones</th>
                     </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody>
+                    {loading && usuarios.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark"
+                        >
+                          Cargando usuarios...
+                        </td>
+                      </tr>
+                    ) : usuarios.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="px-6 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark"
+                        >
+                          No hay usuarios registrados aún.
+                        </td>
+                      </tr>
+                    ) : (
+                      usuarios.map((u) => {
+                        let roleName = 'Sin rol';
+
+                        if (u.role && typeof u.role === 'object' && u.role.roleName) {
+                          roleName = u.role.roleName;
+                        } else if (typeof u.role === 'number' && u.role !== 0) {
+                          roleName = roles.find(r => r.id === u.role)?.roleName || 'Sin rol';
+                        } else if (u.roleId && typeof u.roleId === 'number') {
+                          roleName = roles.find(r => r.id === u.roleId)?.roleName || 'Sin rol';
+                        }
+
+                        return (
+                          <tr
+                            key={u.id}
+                            className="border-b border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-background-dark transition"
+                          >
+                            <td className="px-6 py-4 font-semibold">
+                              {String(u.firstName || '')} {String(u.lastName || '')}
+                            </td>
+                            <td className="px-6 py-4">{String(u.email || '')}</td>
+                            <td className="px-6 py-4">{String(u.documentNumber || 'N/A')}</td>
+                            <td className="px-6 py-4">{String(roleName)}</td>
+                            <td className="px-6 py-4">
+                              <EstadoBadge estado={u.active ? "Activo" : "Inactivo"} />
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex justify-center gap-2">
+                                <button
+                                  onClick={() => handleEdit(u)}
+                                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                                  disabled={loading}
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(u.id)}
+                                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-semibold"
+                                  disabled={loading}
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ================= MODAL FORMULARIO ================= */}
+            {isModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <button
+                  type="button"
+                  className="absolute inset-0 bg-black/50"
+                  onClick={handleCloseModal}
+                  aria-label="Cerrar modal"
+                />
+
+                <div className="relative w-full max-w-3xl rounded-xl bg-card-light p-6 shadow-lg dark:bg-card-dark border border-border-light dark:border-border-dark">
+                  <div className="flex items-start justify-between gap-4 mb-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+                        {editingUser ? "Editar Usuario" : "Crear Nuevo Usuario"}
+                      </h2>
+                      <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
+                        Completa los datos del usuario.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
+                      aria-label="Cerrar"
+                      disabled={loading}
+                    >
+                      <span className="material-symbols-outlined text-xl">close</span>
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
+                    <Input
+                      label="Nombre"
+                      name="firstName"
+                      value={form.firstName}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+
+                    <Input
+                      label="Apellido"
+                      name="lastName"
+                      value={form.lastName}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+
+                    <Input
+                      label="Correo Electrónico"
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+
+                    <Select
+                      label="Tipo de Documento"
+                      name="documentType"
+                      value={form.documentType}
+                      onChange={handleChange}
+                      options={[
+                        { value: "CC", label: "Cédula de Ciudadanía" },
+                        { value: "TI", label: "Tarjeta de Identidad" },
+                        { value: "CE", label: "Cédula de Extranjería" },
+                        { value: "PA", label: "Pasaporte" }
+                      ]}
+                      disabled={loading}
+                    />
+
+                    <Input
+                      label="Número de Documento"
+                      name="documentNumber"
+                      value={form.documentNumber}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="Se usa como método de autenticación"
+                    />
+
+                    <Select
+                      label="Rol"
+                      name="roleId"
+                      value={form.roleId}
+                      onChange={handleChange}
+                      options={roles.map(r => ({ value: r.id, label: r.roleName || r.name }))}
+                      disabled={loading}
+                    />
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        name="active"
+                        checked={form.active}
+                        onChange={handleChange}
+                        disabled={loading}
+                        className="w-4 h-4 text-primary focus:ring-primary"
+                      />
+                      <label className="text-sm font-semibold">Usuario Activo</label>
+                    </div>
+
+                    <div className="md:col-span-2 flex justify-end gap-4 mt-4">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="px-6 py-2 rounded-lg bg-surface-light dark:bg-surface-dark font-semibold"
+                        disabled={loading}
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-8 py-2 rounded-lg bg-primary text-white font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
+                      >
+                        {loading ? "Guardando..." : editingUser ? "Actualizar Usuario" : "Crear Usuario"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

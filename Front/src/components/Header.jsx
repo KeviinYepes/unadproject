@@ -33,9 +33,6 @@ export default function Header() {
         <button className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary">
           <span className="material-symbols-outlined text-2xl">notifications</span>
         </button>
-        <button className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary">
-          <span className="material-symbols-outlined text-2xl">chat_bubble</span>
-        </button>
 
         {/* Contenedor de la foto con menú */}
         <div className="relative" ref={menuRef}>
