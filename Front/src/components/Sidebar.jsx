@@ -5,6 +5,7 @@ export default function Sidebar() {
   const navItems = [
   { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin' },
   { path: '/admin/users', icon: 'group', label: 'Usuarios' },
+  { path: '/admin/roles', icon: 'admin_panel_settings', label: 'Roles' },
   { path: '/admin/videos', icon: 'video_library', label: 'Videos' },
   { path: '/foro', icon: 'forum', label: 'Foro' },
 ];
@@ -55,24 +56,6 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
-      </div>
-
-      {/* Enlaces inferiores */}
-      <div className="mt-auto flex flex-col gap-1">
-        <NavLink
-          to="#"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
-        >
-          <span className="material-symbols-outlined text-2xl">settings</span>
-          <p className="text-sm font-medium leading-normal">Settings</p>
-        </NavLink>
-        <NavLink
-          to="#"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
-        >
-          <span className="material-symbols-outlined text-2xl">help</span>
-          <p className="text-sm font-medium leading-normal">Help</p>
-        </NavLink>
       </div>
     </aside>
   );
