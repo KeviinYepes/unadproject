@@ -1,15 +1,18 @@
 import { NavLink } from 'react-router-dom';
+import AuthService from '../services/AuthService';
 
 export default function Sidebar() {
+  const currentUser = AuthService.getCurrentUser();
+  const currentRole = normalizeRole(currentUser?.role);
   
   const navItems = [
-  { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin' },
-  { path: '/admin/users', icon: 'group', label: 'Usuarios' },
-  { path: '/admin/roles', icon: 'admin_panel_settings', label: 'Roles' },
-  { path: '/admin/categories', icon: 'category', label: 'Categorias' },
-  { path: '/admin/videos', icon: 'video_library', label: 'Videos' },
-  { path: '/foro', icon: 'forum', label: 'Foro' },
-];
+    { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin', roles: ['ADMIN'] },
+    { path: '/admin/users', icon: 'group', label: 'Usuarios', roles: ['ADMIN'] },
+    { path: '/admin/roles', icon: 'admin_panel_settings', label: 'Roles', roles: ['ADMIN'] },
+    { path: '/admin/categories', icon: 'category', label: 'Categorias', roles: ['ADMIN'] },
+    { path: '/admin/videos', icon: 'video_library', label: 'Videos', roles: ['ADMIN', 'USER', 'MODERATOR'] },
+    { path: '/foro', icon: 'forum', label: 'Foro', roles: ['ADMIN', 'USER', 'MODERATOR'] },
+  ].filter((item) => item.roles.includes(currentRole));
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border-light bg-card-light p-4 dark:border-border-dark dark:bg-card-dark">
@@ -61,3 +64,8 @@ export default function Sidebar() {
     </aside>
   );
 }
+
+const normalizeRole = (role) =>
+  String(role || "USER")
+    .replace(/^ROLE_/i, "")
+    .toUpperCase();

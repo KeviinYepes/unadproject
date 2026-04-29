@@ -36,6 +36,9 @@ public class User {
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
+    @Column(name = "status", nullable = false)
+    private Boolean status = true;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

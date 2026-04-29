@@ -25,10 +25,10 @@ function App() {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Rutas administrativas protegidas */}
-        <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-        <Route path="/admin/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
-        <Route path="/admin/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><Users /></ProtectedRoute>} />
+        <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['ADMIN']}><Roles /></ProtectedRoute>} />
+        <Route path="/admin/categories" element={<ProtectedRoute allowedRoles={['ADMIN']}><Categories /></ProtectedRoute>} />
         <Route path="/admin/videos" element={<ProtectedRoute><VideosLibrary /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>

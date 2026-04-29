@@ -79,6 +79,10 @@ public class UserService implements IUserService {
                     .orElseThrow(() -> new RuntimeException("Rol no encontrado con id: " + user.getRole().getId()));
         }
 
+        if (user.getStatus() == null) {
+            user.setStatus(true);
+        }
+
         return userRepository.save(user);
     }
 
@@ -114,6 +118,7 @@ public class UserService implements IUserService {
         user.setDocumentType(userDetails.getDocumentType());
         user.setDocumentNumber(userDetails.getDocumentNumber());
         user.setEmail(userDetails.getEmail());
+        user.setStatus(userDetails.getStatus() != null ? userDetails.getStatus() : true);
 
         return userRepository.save(user);
     }

@@ -1,8 +1,11 @@
 package com.unad.project_video_platform.controller;
 
 import com.unad.project_video_platform.dto.ApiResponse;
+import com.unad.project_video_platform.dto.VideoStatsRequest;
 import com.unad.project_video_platform.entity.Video;
+import com.unad.project_video_platform.entity.VideoStats;
 import com.unad.project_video_platform.service.impl.IVideoService;
+import com.unad.project_video_platform.service.impl.IVideoStatsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,61 +23,37 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/videos")
+@RequestMapping("/api/content")
 @CrossOrigin(origins = "*")
-public class VideoController {
+public class ContentController {
 
     @Autowired
     private IVideoService videoService;
 
-    /**
-     * GET /api/videos - Obtiene todos los videos
-     */
+    @Autowired
+    private IVideoStatsService videoStatsService;
+
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Video>>> getAllVideos() {
-        List<Video> videos = videoService.getAllVideos();
-        return ResponseEntity.ok(ApiResponse.ok("Videos consulted", videos));
+    public ResponseEntity<ApiResponse<List<Video>>> getAllContent() {
+        List<Video> content = videoService.getAllVideos();
+        return ResponseEntity.ok(ApiResponse.ok("Content consulted", content));
     }
 
-    /**
-     * GET /api/videos/{id} - Obtiene un video por ID
-     */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Video>> getVideoById(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<Video>> getContentById(@PathVariable Integer id) {
         return videoService.getVideoById(id)
-                .map(video -> ResponseEntity.ok(ApiResponse.ok("Video found", video)))
+                .map(content -> ResponseEntity.ok(ApiResponse.ok("Content found", content)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.<Video>notFound("Video not found with id: " + id)));
+                        .body(ApiResponse.<Video>notFound("Content not found with id: " + id)));
     }
 
-    /**
-     * POST /api/videos - Crea un nuevo video
-     */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     @PostMapping
-    public ResponseEntity<ApiResponse<Video>> createVideo(@RequestBody Video video) {
+    public ResponseEntity<ApiResponse<Video>> createContent(@RequestBody Video content) {
         try {
-            Video created = videoService.createVideo(video);
+            Video created = videoService.createVideo(content);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.created("Video created", created));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<Video>badRequest(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.<Video>internalError(e.getMessage()));
-        }
-    }
-
-    /**
-     * PUT /api/videos/{id} - Actualiza un video existente
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Video>> updateVideo(@PathVariable Integer id, @RequestBody Video videoDetails) {
-        try {
-            Video updated = videoService.updateVideo(id, videoDetails);
-            return ResponseEntity.ok(ApiResponse.ok("Video updated", updated));
+                    .body(ApiResponse.created("Content created", created));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.<Video>badRequest(e.getMessage()));
@@ -87,21 +66,53 @@ public class VideoController {
         }
     }
 
-    /**
-     * DELETE /api/videos/{id} - Elimina un video
-     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Video>> updateContent(@PathVariable Integer id, @RequestBody Video content) {
+        try {
+            Video updated = videoService.updateVideo(id, content);
+            return ResponseEntity.ok(ApiResponse.ok("Content updated", updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Video>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<Video>notFound(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Video>internalError(e.getMessage()));
+        }
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteVideo(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<Void>> deleteContent(@PathVariable Integer id) {
         try {
             videoService.deleteVideo(id);
-            return ResponseEntity.ok(ApiResponse.<Void>ok("Video deleted successfully", null));
+            return ResponseEntity.ok(ApiResponse.<Void>ok("Content deleted successfully", null));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.<Void>notFound(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.<Void>internalError(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/stats/record")
+    public ResponseEntity<ApiResponse<VideoStats>> recordContentStats(@RequestBody VideoStatsRequest request) {
+        try {
+            VideoStats stats = videoStatsService.recordStats(request);
+            return ResponseEntity.ok(ApiResponse.ok("Content stats recorded", stats));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<VideoStats>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<VideoStats>notFound(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<VideoStats>internalError(e.getMessage()));
         }
     }
 }

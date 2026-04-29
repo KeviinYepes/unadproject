@@ -84,6 +84,7 @@ const UserService = {
    * @returns {Promise<Object>}
    */
   create: async (userData) => {
+    const status = typeof userData?.status === "boolean" ? userData.status : true;
     const payload = {
       firstName: userData?.firstName,
       lastName: userData?.lastName,
@@ -91,6 +92,7 @@ const UserService = {
       documentType: userData?.documentType,
       documentNumber: userData?.documentNumber,
       role: userData?.roleId ? { id: Number(userData.roleId) } : null,
+      status,
     };
 
     const response = await api.post("/api/users", payload);
@@ -104,6 +106,7 @@ const UserService = {
    * @returns {Promise<Object>}
    */
   update: async (id, userData) => {
+    const status = typeof userData?.status === "boolean" ? userData.status : true;
     const payload = {
       firstName: userData?.firstName,
       lastName: userData?.lastName,
@@ -111,6 +114,7 @@ const UserService = {
       documentType: userData?.documentType,
       documentNumber: userData?.documentNumber,
       role: userData?.roleId ? { id: Number(userData.roleId) } : null,
+      status,
     };
 
     const response = await api.put(`/api/users/${id}`, payload);
