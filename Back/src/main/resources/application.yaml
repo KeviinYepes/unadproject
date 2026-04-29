@@ -1,6 +1,11 @@
 spring:
   application:
     name: project-video-platform
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 60MB
   
   datasource:
     url: jdbc:postgresql://localhost:5434/video_platform
@@ -24,3 +29,8 @@ jwt:
 
 server:
   port: 8080
+
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  storage:
+    materials-path: ${APP_MATERIALS_PATH:uploads/materials}

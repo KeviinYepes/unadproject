@@ -1,6 +1,7 @@
 package com.unad.project_video_platform.repository;
 
 import com.unad.project_video_platform.entity.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +10,12 @@ import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+
+    @Override
+    @EntityGraph(attributePaths = {"role"})
+    Optional<User> findById(Integer id);
     
+    @EntityGraph(attributePaths = {"role"})
     Optional<User> findByEmail(String email);
     
     Optional<User> findByDocumentNumber(String documentNumber);

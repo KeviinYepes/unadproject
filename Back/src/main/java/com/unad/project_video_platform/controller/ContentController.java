@@ -4,10 +4,14 @@ import com.unad.project_video_platform.dto.ApiResponse;
 import com.unad.project_video_platform.dto.VideoStatsRequest;
 import com.unad.project_video_platform.entity.Video;
 import com.unad.project_video_platform.entity.VideoStats;
+import com.unad.project_video_platform.service.LocalContentMaterialStorageService;
 import com.unad.project_video_platform.service.impl.IVideoService;
 import com.unad.project_video_platform.service.impl.IVideoStatsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -18,7 +22,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -32,6 +38,9 @@ public class ContentController {
 
     @Autowired
     private IVideoStatsService videoStatsService;
+
+    @Autowired
+    private LocalContentMaterialStorageService localContentMaterialStorageService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Video>>> getAllContent() {
@@ -47,13 +56,84 @@ public class ContentController {
                         .body(ApiResponse.<Video>notFound("Content not found with id: " + id)));
     }
 
+    @GetMapping("/materials/{storedFileName:.+}")
+    public ResponseEntity<Resource> getMaterial(@PathVariable String storedFileName) {
+        Resource resource = localContentMaterialStorageService.loadAsResource(storedFileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+    }
+
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Video>> createContent(@RequestBody Video content) {
         try {
             Video created = videoService.createVideo(content);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.created("Content created", created));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Video>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<Video>notFound(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Video>internalError(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Video>> createContentWithMaterials(
+            @RequestPart("content") Video content,
+            @RequestPart(value = "materials", required = false) MultipartFile[] materials) {
+        try {
+            Video created = videoService.createVideo(content, materials);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.created("Content created", created));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Video>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Video>internalError(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Video>internalError(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    @PostMapping(value = "/{id}/materials", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Video>> addMaterials(
+            @PathVariable Integer id,
+            @RequestPart(value = "materials", required = false) MultipartFile[] materials) {
+        try {
+            Video updated = videoService.addMaterials(id, materials);
+            return ResponseEntity.ok(ApiResponse.ok("Materials added", updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<Video>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<Video>notFound(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Video>internalError(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    @DeleteMapping("/{id}/materials/{materialId}")
+    public ResponseEntity<ApiResponse<Video>> deleteMaterial(
+            @PathVariable Integer id,
+            @PathVariable Integer materialId) {
+        try {
+            Video updated = videoService.deleteMaterial(id, materialId);
+            return ResponseEntity.ok(ApiResponse.ok("Material deleted", updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.<Video>badRequest(e.getMessage()));

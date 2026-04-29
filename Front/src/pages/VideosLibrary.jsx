@@ -26,6 +26,7 @@ export default function VideosLibrary() {
     categoryId: "",
     description: "",
     urlVideo: "",
+    materials: [],
   });
 
   useEffect(() => {
@@ -97,19 +98,24 @@ export default function VideosLibrary() {
   };
 
   const handleOpenCreate = () => {
-    setForm({ title: "", categoryId: "", description: "", urlVideo: "" });
+    setForm({ title: "", categoryId: "", description: "", urlVideo: "", materials: [] });
     setError("");
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setForm({ title: "", categoryId: "", description: "", urlVideo: "" });
+    setForm({ title: "", categoryId: "", description: "", urlVideo: "", materials: [] });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    setForm((prev) => ({ ...prev, materials: files }));
   };
 
   const handleSubmit = async (e) => {
@@ -129,6 +135,7 @@ export default function VideosLibrary() {
         categoryId: form.categoryId,
         description: form.description || null,
         createdById: currentUser.userId,
+        materials: form.materials,
       });
 
       showToast("Contenido agregado correctamente.");
@@ -192,6 +199,7 @@ export default function VideosLibrary() {
     imageUrl: getYouTubeThumbnail(video.urlVideo),
     url: video.urlVideo,
     description: video.description,
+    materials: video.materials || [],
     createdAt: video.createdAt,
   });
 
@@ -449,6 +457,16 @@ export default function VideosLibrary() {
                       />
                     </div>
 
+                    <div className="md:col-span-2">
+                      <FileInput
+                        label="Materiales PDF"
+                        name="materials"
+                        files={form.materials}
+                        onChange={handleFileChange}
+                        disabled={loading}
+                      />
+                    </div>
+
                     <div className="md:col-span-2 flex justify-end gap-4 mt-4">
                       <button
                         type="button"
@@ -503,6 +521,33 @@ const Textarea = ({ label, required = true, disabled = false, rows = 4, ...props
   <div className="flex flex-col gap-2">
     <label className="text-sm font-semibold">{label}</label>
     <textarea {...props} rows={rows} className="input" required={required} disabled={disabled} />
+  </div>
+);
+
+const FileInput = ({ label, files = [], disabled = false, ...props }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-sm font-semibold">{label}</label>
+    <input
+      {...props}
+      type="file"
+      accept="application/pdf,.pdf"
+      multiple
+      className="input file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-white"
+      disabled={disabled}
+    />
+    {files.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {files.map((file) => (
+          <span
+            key={`${file.name}-${file.size}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 dark:bg-red-900/20"
+          >
+            <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+            {file.name}
+          </span>
+        ))}
+      </div>
+    )}
   </div>
 );
 
