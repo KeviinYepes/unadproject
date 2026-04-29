@@ -21,12 +21,14 @@ public class RoleController {
     @Autowired
     private IRoleService roleService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<Role>>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.ok("Roles consulted", roles));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
         public ResponseEntity<ApiResponse<Role>> getRoleById(@PathVariable Integer id) {
         return roleService.getRoleById(id)
@@ -35,6 +37,7 @@ public class RoleController {
                 .body(ApiResponse.<Role>notFound("Role not found with id: " + id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/search")
         public ResponseEntity<ApiResponse<Role>> getRoleByName(@RequestParam String name) {
         return roleService.getRoleByName(name)
@@ -103,6 +106,7 @@ public class RoleController {
     /**
      * GET /api/roles/exists?name={roleName} - Verifica si existe un rol
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/exists")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> existsByRoleName(@RequestParam String name) {
         boolean exists = roleService.existsByRoleName(name);

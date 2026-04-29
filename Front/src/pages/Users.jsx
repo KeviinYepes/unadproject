@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Toast from "../components/Toast";
+import Pagination from "../components/Pagination";
 import UserService from "../services/UserService";
 import RoleService from "../services/RoleService";
 
 const Users = () => {
+  const PAGE_SIZE = 5;
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,6 +15,7 @@ const Users = () => {
   const [toast, setToast] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -20,7 +23,7 @@ const Users = () => {
     documentType: "CC",
     documentNumber: "",
     roleId: "",
-    active: true,
+    status: true,
   });
 
   /* ================== CARGAR USUARIOS Y ROLES ================== */
@@ -28,6 +31,15 @@ const Users = () => {
     cargarRoles();
     cargarUsuarios();
   }, []);
+
+  const paginatedUsuarios = useMemo(
+    () => paginate(usuarios, currentPage, PAGE_SIZE),
+    [usuarios, currentPage]
+  );
+
+  useEffect(() => {
+    setCurrentPage((page) => clampPage(page, usuarios.length, PAGE_SIZE));
+  }, [usuarios.length]);
 
   useEffect(() => {
     if (!toast) return;
@@ -120,7 +132,7 @@ const Users = () => {
       documentType: usuario.documentType || "CC",
       documentNumber: usuario.documentNumber || "",
       roleId: usuario.role?.id || "",
-      active: usuario.active !== undefined ? usuario.active : true,
+      status: usuario.status !== undefined && usuario.status !== null ? usuario.status : true,
     });
     setIsModalOpen(true);
   };
@@ -155,7 +167,7 @@ const Users = () => {
       documentType: "CC",
       documentNumber: "",
       roleId: "",
-      active: true,
+      status: true,
     });
   };
 
@@ -242,7 +254,7 @@ const Users = () => {
                         </td>
                       </tr>
                     ) : (
-                      usuarios.map((u) => {
+                      paginatedUsuarios.map((u) => {
                         let roleName = 'Sin rol';
 
                         if (u.role && typeof u.role === 'object' && u.role.roleName) {
@@ -265,7 +277,7 @@ const Users = () => {
                             <td className="px-6 py-4">{String(u.documentNumber || 'N/A')}</td>
                             <td className="px-6 py-4">{String(roleName)}</td>
                             <td className="px-6 py-4">
-                              <EstadoBadge estado={u.active ? "Activo" : "Inactivo"} />
+                              <EstadoBadge estado={u.status ? "Activo" : "Inactivo"} />
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex justify-center gap-2">
@@ -292,6 +304,12 @@ const Users = () => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                page={currentPage}
+                totalItems={usuarios.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={(page) => setCurrentPage(clampPage(page, usuarios.length, PAGE_SIZE))}
+              />
             </div>
 
             {/* ================= MODAL FORMULARIO ================= */}
@@ -387,8 +405,8 @@ const Users = () => {
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
-                        name="active"
-                        checked={form.active}
+                        name="status"
+                        checked={!!form.status}
                         onChange={handleChange}
                         disabled={loading}
                         className="w-4 h-4 text-primary focus:ring-primary"
@@ -465,5 +483,15 @@ const EstadoBadge = ({ estado }) => (
     {estado}
   </span>
 );
+
+const paginate = (items, page, pageSize) => {
+  const start = (page - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+};
+
+const clampPage = (page, totalItems, pageSize) => {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  return Math.min(Math.max(1, page), totalPages);
+};
 
 export default Users;

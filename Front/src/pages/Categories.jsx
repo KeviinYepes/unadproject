@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Toast from "../components/Toast";
+import Pagination from "../components/Pagination";
 import CategoryService from "../services/CategoryService";
 
 const Categories = () => {
+  const PAGE_SIZE = 5;
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     categoryName: "",
     description: "",
@@ -19,6 +22,15 @@ const Categories = () => {
   useEffect(() => {
     cargarCategorias();
   }, []);
+
+  const paginatedCategories = useMemo(
+    () => paginate(categories, currentPage, PAGE_SIZE),
+    [categories, currentPage]
+  );
+
+  useEffect(() => {
+    setCurrentPage((page) => clampPage(page, categories.length, PAGE_SIZE));
+  }, [categories.length]);
 
   useEffect(() => {
     if (!toast) return;
@@ -205,7 +217,7 @@ const Categories = () => {
                         </td>
                       </tr>
                     ) : (
-                      categories.map((category) => (
+                      paginatedCategories.map((category) => (
                         <tr
                           key={category.id}
                           className="border-b border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-background-dark transition"
@@ -238,6 +250,12 @@ const Categories = () => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                page={currentPage}
+                totalItems={categories.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={(page) => setCurrentPage(clampPage(page, categories.length, PAGE_SIZE))}
+              />
             </div>
 
             {isModalOpen && (
@@ -337,5 +355,15 @@ const Textarea = ({ label, required = true, disabled = false, rows = 4, ...props
     <textarea {...props} rows={rows} className="input" required={required} disabled={disabled} />
   </div>
 );
+
+const paginate = (items, page, pageSize) => {
+  const start = (page - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+};
+
+const clampPage = (page, totalItems, pageSize) => {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  return Math.min(Math.max(1, page), totalPages);
+};
 
 export default Categories;

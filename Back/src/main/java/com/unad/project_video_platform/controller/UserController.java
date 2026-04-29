@@ -24,6 +24,7 @@ public class UserController {
     /**
      * GET /api/users - Obtiene todos los usuarios
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
         List<User> users = userService.getAllUsers();
@@ -33,6 +34,7 @@ public class UserController {
     /**
      * GET /api/users/{id} - Obtiene un usuario por ID
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
         public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable Integer id) {
         return userService.getUserById(id)
@@ -44,6 +46,7 @@ public class UserController {
     /**
      * GET /api/users/search/email?email={email} - Busca un usuario por email
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/search/email")
         public ResponseEntity<ApiResponse<User>> getUserByEmail(@RequestParam String email) {
         return userService.getUserByEmail(email)
@@ -56,6 +59,7 @@ public class UserController {
      * GET /api/users/search/document?documentNumber={documentNumber} - Busca un
      * usuario por documento
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/search/document")
         public ResponseEntity<ApiResponse<User>> getUserByDocumentNumber(@RequestParam String documentNumber) {
         return userService.getUserByDocumentNumber(documentNumber)
@@ -67,6 +71,7 @@ public class UserController {
     /**
      * GET /api/users/role/{roleId} - Obtiene usuarios por rol
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/role/{roleId}")
     public ResponseEntity<ApiResponse<List<User>>> getUsersByRoleId(@PathVariable Integer roleId) {
         List<User> users = userService.getUsersByRoleId(roleId);
@@ -136,6 +141,7 @@ public class UserController {
     /**
      * GET /api/users/exists/email?email={email} - Verifica si existe un email
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/exists/email")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> existsByEmail(@RequestParam String email) {
         boolean exists = userService.existsByEmail(email);
@@ -146,6 +152,7 @@ public class UserController {
      * GET /api/users/exists/document?documentNumber={documentNumber} - Verifica si
      * existe un documento
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/exists/document")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> existsByDocumentNumber(
             @RequestParam String documentNumber) {

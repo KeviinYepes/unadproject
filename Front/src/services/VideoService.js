@@ -1,55 +1,46 @@
-import api from '../config/api';
+import api from "../config/api";
 
 const VideoService = {
-  /**
-   * Lista todos los videos
-   * @returns {Promise<Array>}
-   */
   getAll: async () => {
-    const response = await api.get('/api/videos');
-    return response.data.data || response.data;
+    const response = await api.get("/api/content");
+    return Array.isArray(response.data?.data) ? response.data.data : [];
   },
 
-  /**
-   * Obtiene un video por ID
-   * @param {number} id
-   * @returns {Promise<Object>}
-   */
   getById: async (id) => {
-    const response = await api.get(`/api/videos/${id}`);
-    return response.data;
-  },
-
-  /**
-   * Crea un nuevo video (requiere rol ADMIN)
-   * @param {Object} videoData
-   * @returns {Promise<Object>}
-   */
-  create: async (videoData) => {
-    const response = await api.post('/api/videos', videoData);
+    const response = await api.get(`/api/content/${id}`);
     return response.data.data || response.data;
   },
 
-  /**
-   * Actualiza un video existente (requiere rol ADMIN)
-   * @param {number} id
-   * @param {Object} videoData
-   * @returns {Promise<Object>}
-   */
-  update: async (id, videoData) => {
-    const response = await api.put(`/api/videos/${id}`, videoData);
+  create: async (contentData) => {
+    const payload = {
+      urlVideo: contentData?.urlVideo,
+      title: contentData?.title,
+      description: contentData?.description,
+      category: contentData?.categoryId ? { id: Number(contentData.categoryId) } : null,
+      createdBy: contentData?.createdById ? { id: Number(contentData.createdById) } : null,
+    };
+
+    const response = await api.post("/api/content", payload);
     return response.data.data || response.data;
   },
 
-  /**
-   * Elimina un video (requiere rol ADMIN)
-   * @param {number} id
-   * @returns {Promise<void>}
-   */
+  update: async (id, contentData) => {
+    const payload = {
+      urlVideo: contentData?.urlVideo,
+      title: contentData?.title,
+      description: contentData?.description,
+      category: contentData?.categoryId ? { id: Number(contentData.categoryId) } : null,
+      createdBy: contentData?.createdById ? { id: Number(contentData.createdById) } : null,
+    };
+
+    const response = await api.put(`/api/content/${id}`, payload);
+    return response.data.data || response.data;
+  },
+
   delete: async (id) => {
-    const response = await api.delete(`/api/videos/${id}`);
-    return response.data;
-  }
+    const response = await api.delete(`/api/content/${id}`);
+    return response.data.data || response.data;
+  },
 };
 
 export default VideoService;

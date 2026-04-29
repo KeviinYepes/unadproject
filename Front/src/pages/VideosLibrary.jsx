@@ -1,95 +1,94 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
-import VideoCard from '../components/VideoCard';
-import VideoService from '../services/VideoService';
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
+import Header from "../components/Header";
+import VideoCard from "../components/VideoCard";
+import Toast from "../components/Toast";
+import AuthService from "../services/AuthService";
+import CategoryService from "../services/CategoryService";
+import VideoService from "../services/VideoService";
 
 export default function VideosLibrary() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const currentUser = AuthService.getCurrentUser();
+  const canManageContent = ["ADMIN", "MODERATOR"].includes(normalizeRole(currentUser?.role));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
+  const [durations, setDurations] = useState({});
   const [videos, setVideos] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
-    title: '',
-    category: '',
-    description: '',
-    url: '',
+    title: "",
+    categoryId: "",
+    description: "",
+    urlVideo: "",
   });
 
-  const fallbackTutorials = [
-    {
-      title: 'Cómo completar la Declaración de Renta (Persona Física)',
-      category: 'Impuestos',
-      duration: 12,
-      imageUrl:
-        'https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Llenado paso a paso: Formulario de Inscripción al RFC',
-      category: 'Legal',
-      duration: 8,
-      imageUrl:
-        'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Solicitud de Devolución de Impuestos 2024',
-      category: 'Finanzas',
-      duration: 15,
-      imageUrl:
-        'https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Alta en el Seguro Social (Formulario de Afiliación)',
-      category: 'Salud',
-      duration: 6,
-      imageUrl:
-        'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Cómo solicitar el Subsidio de Vivienda (Paso a Paso)',
-      category: 'Vivienda',
-      duration: 10,
-      imageUrl:
-        'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Renovación de Licencia de Funcionamiento Comercial',
-      category: 'Negocios',
-      duration: 9,
-      imageUrl:
-        'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Formulario de Reclamación de Seguro de Desempleo',
-      category: 'Laboral',
-      duration: 7,
-      imageUrl:
-        'https://images.unsplash.com/photo-1454165833767-027ffea9e77b?q=80&w=500&auto=format&fit=crop',
-    },
-    {
-      title: 'Guía de trámites para el Pasaporte Internacional',
-      category: 'Trámites Civiles',
-      duration: 5,
-      imageUrl:
-        'https://images.unsplash.com/photo-1544027993-37dbfe43562a?q=80&w=500&auto=format&fit=crop',
-    },
-  ];
-
   useEffect(() => {
-    cargarVideos();
+    cargarDatos();
   }, []);
 
-  const cargarVideos = async () => {
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    const loadDurations = async () => {
+      const entries = videos
+        .map((video) => {
+          const videoId = getYouTubeVideoId(video.urlVideo);
+          return videoId ? { key: video.id, videoId } : null;
+        })
+        .filter(Boolean)
+        .filter(({ key }) => !durations[key]);
+
+      if (entries.length === 0) return;
+
+      const results = await Promise.all(
+        entries.map(async ({ key, videoId }) => {
+          const seconds = await getYouTubeDuration(videoId);
+          return [key, formatDuration(seconds)];
+        })
+      );
+
+      setDurations((prev) => ({
+        ...prev,
+        ...Object.fromEntries(results.filter(([, value]) => value)),
+      }));
+    };
+
+    loadDurations();
+  }, [videos]);
+
+  const cargarDatos = async () => {
     try {
       setLoading(true);
-      const data = await VideoService.getAll();
-      setVideos(Array.isArray(data) ? data : []);
-      setError('');
+      const [contentData, categoryData] = await Promise.all([
+        VideoService.getAll(),
+        CategoryService.getAll(),
+      ]);
+
+      setVideos(Array.isArray(contentData) ? contentData : []);
+      setCategories(Array.isArray(categoryData) ? categoryData : []);
+      setError("");
     } catch (e) {
-      console.error('Error cargando videos:', e);
-      const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Error al cargar videos';
+      console.error("Error cargando contenido:", e);
+      const msg =
+        e.response?.data?.error ||
+        e.response?.data?.message ||
+        e.message ||
+        "Error al cargar contenido";
       setError(msg);
       setVideos([]);
     } finally {
@@ -98,14 +97,14 @@ export default function VideosLibrary() {
   };
 
   const handleOpenCreate = () => {
-    setForm({ title: '', category: '', description: '', url: '' });
-    setError('');
+    setForm({ title: "", categoryId: "", description: "", urlVideo: "" });
+    setError("");
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setForm({ title: '', category: '', description: '', url: '' });
+    setForm({ title: "", categoryId: "", description: "", urlVideo: "" });
   };
 
   const handleChange = (e) => {
@@ -116,98 +115,157 @@ export default function VideosLibrary() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
+      const currentUser = AuthService.getCurrentUser();
+      if (!currentUser?.userId) {
+        throw new Error("No se encontro el usuario actual. Vuelve a iniciar sesion.");
+      }
+
       await VideoService.create({
         title: form.title,
-        url: form.url,
-        category: form.category || null,
+        urlVideo: form.urlVideo,
+        categoryId: form.categoryId,
         description: form.description || null,
+        createdById: currentUser.userId,
       });
-      alert('Contenido agregado correctamente');
+
+      showToast("Contenido agregado correctamente.");
       handleCloseModal();
-      await cargarVideos();
+      await cargarDatos();
     } catch (err) {
       console.error(err);
       const apiMessage = err.response?.data?.error || err.response?.data?.message;
-      const fallbackMessage = err.message || 'Error al guardar el contenido';
+      const fallbackMessage = err.message || "Error al guardar el contenido";
       const msg = apiMessage || fallbackMessage;
       setError(msg);
-      alert('Error al guardar el contenido: ' + msg);
+      showToast("Error al guardar el contenido: " + msg, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const placeholderImages = [
-    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=500&auto=format&fit=crop',
-  ];
+  const fallbackImage =
+    "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=500&auto=format&fit=crop";
 
-  const toCardItem = (video, index) => ({
+  const getYouTubeVideoId = (url) => {
+    if (!url) return null;
+
+    try {
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname.replace(/^www\./, "");
+
+      if (host === "youtu.be") {
+        return parsedUrl.pathname.split("/").filter(Boolean)[0] || null;
+      }
+
+      if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+        if (parsedUrl.pathname === "/watch") {
+          return parsedUrl.searchParams.get("v");
+        }
+
+        const parts = parsedUrl.pathname.split("/").filter(Boolean);
+        if (["embed", "shorts", "live"].includes(parts[0])) {
+          return parts[1] || null;
+        }
+      }
+    } catch {
+      const match = String(url).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([a-zA-Z0-9_-]{11})/);
+      return match?.[1] || null;
+    }
+
+    return null;
+  };
+
+  const getYouTubeThumbnail = (url) => {
+    const videoId = getYouTubeVideoId(url);
+    return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : fallbackImage;
+  };
+
+  const toCardItem = (video) => ({
     id: video.id,
     title: video.title,
-    category: video.category || 'Sin categoría',
-    duration: '--',
-    imageUrl: placeholderImages[index % placeholderImages.length],
-    url: video.url,
+    category: video.category?.categoryName || "Sin categoria",
+    createdBy: video.createdBy,
+    duration: durations[video.id] || "...",
+    imageUrl: getYouTubeThumbnail(video.urlVideo),
+    url: video.urlVideo,
     description: video.description,
     createdAt: video.createdAt,
   });
 
-  const items = videos.length > 0 ? videos.map(toCardItem) : fallbackTutorials.map((t, idx) => ({ ...t, id: `fallback-${idx}` }));
+  const items = videos.map(toCardItem);
+
+  const featuredCategories =
+    categories.length > 0
+      ? categories.slice(0, 4).map((category) => category.categoryName)
+      : ["Impuestos", "Salud", "Laboral", "Tramites Civiles"];
 
   const filteredTutorials = useMemo(() => {
     const q = searchQuery
       .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim();
 
-    if (!q) return items;
-
     const normalize = (value) =>
-      String(value ?? '')
+      String(value ?? "")
         .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 
-    return items.filter((t) => {
-      const haystack = `${normalize(t.title)} ${normalize(t.category)}`;
-      return haystack.includes(q);
+    const selected = normalize(selectedCategory);
+
+    const filtered = items.filter((tutorial) => {
+      const haystack = `${normalize(tutorial.title)} ${normalize(tutorial.category)}`;
+      const matchesSearch = !q || haystack.includes(q);
+      const matchesCategory = !selected || normalize(tutorial.category) === selected;
+      return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, items]);
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "title") {
+        return String(a.title).localeCompare(String(b.title), "es", { sensitivity: "base" });
+      }
+
+      if (sortBy === "category") {
+        return String(a.category).localeCompare(String(b.category), "es", { sensitivity: "base" });
+      }
+
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  }, [searchQuery, selectedCategory, sortBy, items]);
 
   return (
     <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
+      <Toast message={toast?.message} type={toast?.type} onClose={() => setToast(null)} />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-y-auto">
         <Header />
         <main className="flex-1 p-8">
           <div className="flex flex-col gap-6">
-            {/* Título de la página */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#101922] dark:text-white">
-                  Biblioteca de Guías Visuales
+                  Biblioteca de Guias Visuales
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400">
                   Selecciona un formulario para ver el video instructivo y seguir los pasos.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleOpenCreate}
-                disabled={loading}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-lg">add</span>
-                Agregar contenido
-              </button>
+              {canManageContent && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreate}
+                  disabled={loading}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-lg">add</span>
+                  Agregar contenido
+                </button>
+              )}
             </div>
 
             {error && (
@@ -216,7 +274,6 @@ export default function VideosLibrary() {
               </div>
             )}
 
-            {/* Buscador */}
             <label className="relative flex w-full max-w-md">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <span className="material-symbols-outlined text-xl text-text-light-secondary dark:text-dark-secondary">
@@ -225,61 +282,100 @@ export default function VideosLibrary() {
               </div>
               <input
                 className="form-input h-10 w-full flex-1 rounded-lg border-none bg-background-light pl-10 text-sm placeholder:text-text-light-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-background-dark dark:placeholder:text-dark-secondary"
-                placeholder="Search tutorials..."
+                placeholder="Buscar contenido..."
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </label>
 
-            {/* Filtros / Chips */}
             <div className="flex flex-wrap gap-2">
-              <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-slate-300 bg-white px-4 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700">
-                <p className="text-sm font-medium">Ordenar por: Recientes</p>
-                <span className="material-symbols-outlined text-lg">expand_more</span>
-              </button>
-
-              {/* Categorías destacadas */}
-              {['Impuestos', 'Salud', 'Laboral', 'Trámites Civiles'].map((cat) => (
-                <button
-                  key={cat}
-                  className="flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 transition-colors hover:border-primary hover:text-primary dark:border-slate-700 dark:bg-slate-800"
+              <label className="relative h-9 shrink-0">
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value)}
+                  className="h-9 appearance-none rounded-lg border border-slate-300 bg-white pl-4 pr-10 text-sm font-medium transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 >
-                  <p className="text-sm font-medium">{cat}</p>
+                  <option value="recent">Ordenar por: Recientes</option>
+                  <option value="title">Ordenar por: Titulo</option>
+                  <option value="category">Ordenar por: Categoria</option>
+                </select>
+                <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg">
+                  expand_more
+                </span>
+              </label>
+
+              {featuredCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory((current) => (current === category ? "" : category))}
+                  className={`flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 transition-colors ${
+                    selectedCategory === category
+                      ? "border-primary bg-primary/10 text-primary dark:bg-primary/20"
+                      : "border-slate-300 bg-white hover:border-primary hover:text-primary dark:border-slate-700 dark:bg-slate-800"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{category}</p>
                 </button>
               ))}
             </div>
 
-            {/* Grilla de videos */}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-8">
               {loading && filteredTutorials.length === 0 ? (
                 <div className="col-span-full py-10 text-center text-text-light-secondary dark:text-dark-secondary">
                   Cargando contenido...
                 </div>
+              ) : !error && videos.length === 0 ? (
+                <div className="col-span-full flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border-light bg-card-light p-10 text-center dark:border-border-dark dark:bg-card-dark">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <span className="material-symbols-outlined text-3xl">video_library</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+                    No hay contenido registrado
+                  </h2>
+                  <p className="mt-2 max-w-md text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                    Agrega tu primer contenido para que aparezca en la biblioteca de guias visuales.
+                  </p>
+                  {canManageContent && (
+                    <button
+                      type="button"
+                      onClick={handleOpenCreate}
+                      className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90"
+                    >
+                      <span className="material-symbols-outlined text-lg">add</span>
+                      Agregar contenido
+                    </button>
+                  )}
+                </div>
+              ) : filteredTutorials.length === 0 ? (
+                <div className="col-span-full py-10 text-center text-text-light-secondary dark:text-dark-secondary">
+                  No hay contenido que coincida con la busqueda.
+                </div>
               ) : (
                 filteredTutorials.map((tutorial, index) => (
-                <Link
-                  key={tutorial.id ?? index}
-                  to="/video"
-                  state={tutorial}
-                  className="group block transition-transform duration-300 hover:scale-[1.03]"
-                >
-                  <VideoCard
-                    title={tutorial.title}
-                    category={tutorial.category}
-                    duration={tutorial.duration}
-                    imageUrl={tutorial.imageUrl}
-                  />
-                  <div className="mt-2 flex items-center gap-1 text-sm font-bold text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="material-symbols-outlined text-base">play_circle</span>
-                    Ver paso a paso
-                  </div>
-                </Link>
+                  <Link
+                    key={tutorial.id ?? index}
+                    to="/video"
+                    state={tutorial}
+                    className="group block transition-transform duration-300 hover:scale-[1.03]"
+                  >
+                    <VideoCard
+                      title={tutorial.title}
+                      category={tutorial.category}
+                      duration={tutorial.duration}
+                      imageUrl={tutorial.imageUrl}
+                    />
+                    <div className="mt-2 flex items-center gap-1 text-sm font-bold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="material-symbols-outlined text-base">play_circle</span>
+                      Ver paso a paso
+                    </div>
+                  </Link>
                 ))
               )}
             </div>
 
-            {isModalOpen && (
+            {canManageContent && isModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <button
                   type="button"
@@ -295,7 +391,7 @@ export default function VideosLibrary() {
                         Agregar contenido multimedia
                       </h2>
                       <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-                        Completa la información del contenido.
+                        Completa la informacion del contenido.
                       </p>
                     </div>
 
@@ -312,26 +408,28 @@ export default function VideosLibrary() {
 
                   <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
                     <Input
-                      label="Título"
+                      label="Titulo"
                       name="title"
                       value={form.title}
                       onChange={handleChange}
                       disabled={loading}
                     />
 
-                    <Input
-                      label="Categoría"
-                      name="category"
-                      value={form.category}
+                    <Select
+                      label="Categoria"
+                      name="categoryId"
+                      value={form.categoryId}
                       onChange={handleChange}
                       disabled={loading}
-                      required={false}
-                      placeholder="Ej: Impuestos"
+                      options={categories.map((category) => ({
+                        value: category.id,
+                        label: category.categoryName,
+                      }))}
                     />
 
                     <div className="md:col-span-2">
                       <Textarea
-                        label="Descripción"
+                        label="Descripcion"
                         name="description"
                         value={form.description}
                         onChange={handleChange}
@@ -342,9 +440,9 @@ export default function VideosLibrary() {
 
                     <div className="md:col-span-2">
                       <Input
-                        label="URL del contenido"
-                        name="url"
-                        value={form.url}
+                        label="URL del video"
+                        name="urlVideo"
+                        value={form.urlVideo}
                         onChange={handleChange}
                         disabled={loading}
                         placeholder="https://..."
@@ -366,7 +464,7 @@ export default function VideosLibrary() {
                         disabled={loading}
                         className="px-8 py-2 rounded-lg bg-primary text-white font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
                       >
-                        {loading ? 'Guardando...' : 'Guardar'}
+                        {loading ? "Guardando..." : "Guardar"}
                       </button>
                     </div>
                   </form>
@@ -380,10 +478,24 @@ export default function VideosLibrary() {
   );
 }
 
-const Input = ({ label, type = 'text', required = true, disabled = false, ...props }) => (
+const Input = ({ label, type = "text", required = true, disabled = false, ...props }) => (
   <div className="flex flex-col gap-2">
     <label className="text-sm font-semibold">{label}</label>
     <input type={type} {...props} className="input" required={required} disabled={disabled} />
+  </div>
+);
+
+const Select = ({ label, options, disabled = false, ...props }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-sm font-semibold">{label}</label>
+    <select {...props} className="input" required disabled={disabled}>
+      <option value="">Seleccionar...</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   </div>
 );
 
@@ -393,3 +505,96 @@ const Textarea = ({ label, required = true, disabled = false, rows = 4, ...props
     <textarea {...props} rows={rows} className="input" required={required} disabled={disabled} />
   </div>
 );
+
+let youtubeApiPromise;
+
+const loadYouTubeApi = () => {
+  if (window.YT?.Player) {
+    return Promise.resolve(window.YT);
+  }
+
+  if (youtubeApiPromise) {
+    return youtubeApiPromise;
+  }
+
+  youtubeApiPromise = new Promise((resolve) => {
+    const previousCallback = window.onYouTubeIframeAPIReady;
+
+    window.onYouTubeIframeAPIReady = () => {
+      previousCallback?.();
+      resolve(window.YT);
+    };
+
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(script);
+    }
+  });
+
+  return youtubeApiPromise;
+};
+
+const getYouTubeDuration = async (videoId) => {
+  if (!videoId) return null;
+
+  try {
+    const YT = await loadYouTubeApi();
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    document.body.appendChild(container);
+
+    return await new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        player?.destroy();
+        container.remove();
+        resolve(null);
+      }, 8000);
+
+      let player = new YT.Player(container, {
+        width: "1",
+        height: "1",
+        videoId,
+        events: {
+          onReady: (event) => {
+            const duration = event.target.getDuration();
+            clearTimeout(timeout);
+            event.target.destroy();
+            container.remove();
+            resolve(duration);
+          },
+          onError: () => {
+            clearTimeout(timeout);
+            player?.destroy();
+            container.remove();
+            resolve(null);
+          },
+        },
+      });
+    });
+  } catch {
+    return null;
+  }
+};
+
+const formatDuration = (seconds) => {
+  if (!seconds || Number.isNaN(seconds)) return null;
+
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const normalizeRole = (role) =>
+  String(role || "USER")
+    .replace(/^ROLE_/i, "")
+    .toUpperCase();

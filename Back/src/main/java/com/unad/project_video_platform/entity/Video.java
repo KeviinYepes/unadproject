@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "videos")
+@Table(name = "content")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,8 +18,8 @@ public class Video {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "url", nullable = false, length = 500)
-    private String url;
+    @Column(name = "url_video", nullable = false, length = 500)
+    private String urlVideo;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
@@ -27,11 +27,16 @@ public class Video {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "category", length = 255)
-    private String category;
+    @ManyToOne
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @ManyToOne
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
 
     @PrePersist
     protected void onCreate() {
