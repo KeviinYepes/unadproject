@@ -43,6 +43,11 @@ public interface IUserService {
     User updateUser(Integer id, User userDetails);
 
     /**
+     * Actualiza el perfil del usuario autenticado
+     */
+    User updateProfile(String email, User userDetails);
+
+    /**
      * Elimina un usuario por ID
      */
     void deleteUser(Integer id);

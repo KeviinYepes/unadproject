@@ -124,6 +124,32 @@ public class UserService implements IUserService {
     }
 
     /**
+     * Actualiza datos editables del perfil propio.
+     */
+    @Transactional
+    public User updateProfile(String email, User userDetails) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con email: " + email));
+
+        if (userDetails.getDocumentNumber() == null || userDetails.getDocumentNumber().isBlank()) {
+            throw new IllegalArgumentException("El numero de documento es obligatorio");
+        }
+
+        if (!user.getDocumentNumber().equals(userDetails.getDocumentNumber())
+                && userRepository.existsByDocumentNumber(userDetails.getDocumentNumber())) {
+            throw new IllegalArgumentException(
+                    "Ya existe un usuario con el numero de documento: " + userDetails.getDocumentNumber());
+        }
+
+        user.setFirstName(userDetails.getFirstName());
+        user.setLastName(userDetails.getLastName());
+        user.setDocumentType(userDetails.getDocumentType());
+        user.setDocumentNumber(userDetails.getDocumentNumber());
+
+        return userRepository.save(user);
+    }
+
+    /**
      * Elimina un usuario por ID
      */
     @Transactional

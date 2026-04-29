@@ -8,9 +8,25 @@ export default function Header() {
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationItems, setNotificationItems] = useState([]);
+  const [profilePhoto, setProfilePhoto] = useState("");
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
   const navigate = useNavigate();
+
+  const loadProfilePhoto = () => {
+    const currentUser = AuthService.getCurrentUser();
+    const storedPhoto = localStorage.getItem(`profilePhoto:${currentUser?.userId || "current"}`);
+    setProfilePhoto(
+      storedPhoto ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.email || "Usuario")}&background=2563eb&color=fff&size=256`
+    );
+  };
+
+  useEffect(() => {
+    loadProfilePhoto();
+    window.addEventListener('profile-photo-changed', loadProfilePhoto);
+    return () => window.removeEventListener('profile-photo-changed', loadProfilePhoto);
+  }, []);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -144,8 +160,7 @@ export default function Header() {
           <div
             className="h-10 w-10 cursor-pointer rounded-full bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage:
-                "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDNI4hMAUIyv4ffDBZGdjOGyb81zdNnseaqZB5GVQpk0KPDJi7CnsjZ-2IfG70EXL7XLdbhG2LekwQm1mToQNg6JAwRPs4DuVGvPgdyShBStgENRHHBXZo7Q1MaKBOe4TYmZzZMJC4P0TvK-0RtylqA-QHX_egtfcGwlDQkF2oPtQZa2s67E0HquLC1hazAqrUV7Kd9w8SRWSMLXlV4W7UUdQf9j_ph9RmRw6A4uG5sbvoGWHRrTsnaHuj9SFEmk2yOCbaEuFeUUTIQ')",
+              backgroundImage: `url(${profilePhoto})`,
             }}
             onClick={toggleProfileMenu}
           />
