@@ -1,22 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import AuthService from "../services/AuthService";
 import VideoStatsService from "../services/VideoStatsService";
 import ForumService from "../services/ForumService";
+import VideoService from "../services/VideoService";
 
 export default function VideoView() {
   const location = useLocation();
+  const navigate = useNavigate();
   const tutorial = location.state || {};
+  const [content, setContent] = useState(tutorial);
 
-  const title = tutorial.title || "Contenido sin titulo";
-  const category = tutorial.category || "Sin categoria";
-  const authorName = getUserName(tutorial.createdBy);
-  const description = tutorial.description || "Este contenido aun no tiene descripcion registrada.";
+  const title = content.title || "Contenido sin titulo";
+  const category = getCategoryLabel(content.category);
+  const authorName = getUserName(content.createdBy);
+  const description = content.description || "Este contenido aun no tiene descripcion registrada.";
+  const materials = Array.isArray(content.materials) ? content.materials : [];
   const currentUser = AuthService.getCurrentUser();
   const canReplyToQuestions = normalizeRole(currentUser?.role) !== "USER";
-  const videoId = getYouTubeVideoId(tutorial.url);
+  const canManageMaterials = normalizeRole(currentUser?.role) !== "USER";
+  const canDeleteContent = normalizeRole(currentUser?.role) === "ADMIN";
+  const videoId = getYouTubeVideoId(getContentUrl(content));
   const playerRef = useRef(null);
   const playerContainerRef = useRef(null);
   const isPlayingRef = useRef(false);
@@ -29,6 +35,13 @@ export default function VideoView() {
   const [forumSubmitting, setForumSubmitting] = useState(false);
   const [replySubmittingId, setReplySubmittingId] = useState(null);
   const [forumError, setForumError] = useState("");
+  const [materialFiles, setMaterialFiles] = useState([]);
+  const [materialSubmitting, setMaterialSubmitting] = useState(false);
+  const [deletingMaterialId, setDeletingMaterialId] = useState(null);
+  const [materialError, setMaterialError] = useState("");
+  const [contentDeleting, setContentDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState(null);
 
   const accumulateWatchTime = ({ keepRunning = false } = {}) => {
     if (!lastStartedAtRef.current) return;
@@ -42,7 +55,7 @@ export default function VideoView() {
   };
 
   const flushWatchTime = async () => {
-    if (!tutorial.id) return;
+    if (!content.id) return;
 
     const seconds = pendingSecondsRef.current;
     if (seconds <= 0) return;
@@ -53,12 +66,12 @@ export default function VideoView() {
       const currentUser = AuthService.getCurrentUser();
       if (!currentUser?.userId) return;
 
-      await VideoStatsService.record({
-        userId: currentUser.userId,
-        contentId: tutorial.id,
-        watchTimeSeconds: seconds,
-        countView: false,
-      });
+        await VideoStatsService.record({
+          userId: currentUser.userId,
+          contentId: content.id,
+          watchTimeSeconds: seconds,
+          countView: false,
+        });
     } catch (error) {
       pendingSecondsRef.current += seconds;
       console.error("Error registrando tiempo visto:", error);
@@ -67,7 +80,7 @@ export default function VideoView() {
 
   useEffect(() => {
     const recordInitialView = async () => {
-      if (!tutorial.id || viewRecordedRef.current) return;
+      if (!content.id || viewRecordedRef.current) return;
 
       try {
         const currentUser = AuthService.getCurrentUser();
@@ -76,7 +89,7 @@ export default function VideoView() {
         viewRecordedRef.current = true;
         await VideoStatsService.record({
           userId: currentUser.userId,
-          contentId: tutorial.id,
+          contentId: content.id,
           watchTimeSeconds: 0,
           countView: true,
         });
@@ -87,17 +100,17 @@ export default function VideoView() {
     };
 
     recordInitialView();
-  }, [tutorial.id]);
+  }, [content.id]);
 
   useEffect(() => {
     const loadQuestions = async () => {
-      if (!tutorial.id) return;
+      if (!content.id) return;
 
       setForumLoading(true);
       setForumError("");
 
       try {
-        const data = await ForumService.getQuestionsByContent(tutorial.id);
+        const data = await ForumService.getQuestionsByContent(content.id);
         setQuestions(data);
       } catch (error) {
         console.error("Error cargando preguntas:", error);
@@ -108,7 +121,7 @@ export default function VideoView() {
     };
 
     loadQuestions();
-  }, [tutorial.id]);
+  }, [content.id]);
 
   useEffect(() => {
     if (!videoId || !playerContainerRef.current) return;
@@ -168,7 +181,7 @@ export default function VideoView() {
       flushWatchTime();
       playerRef.current?.destroy?.();
     };
-  }, [videoId, tutorial.id]);
+  }, [videoId, content.id]);
 
   const createForumMessage = async (descriptionValue) => {
     try {
@@ -180,7 +193,7 @@ export default function VideoView() {
       setForumError("");
 
       const created = await ForumService.createQuestion({
-        contentId: tutorial.id,
+        contentId: content.id,
         userId: currentUser.userId,
         title: `Dudas sobre ${title}`,
         description: descriptionValue,
@@ -203,7 +216,7 @@ export default function VideoView() {
     event.preventDefault();
 
     const descriptionValue = questionText.trim();
-    if (!descriptionValue || !tutorial.id) return;
+    if (!descriptionValue || !content.id) return;
 
     try {
       setForumSubmitting(true);
@@ -218,13 +231,88 @@ export default function VideoView() {
 
   const handleReplySubmit = async (question, replyText) => {
     const replyValue = replyText.trim();
-    if (!replyValue || !tutorial.id) return null;
+    if (!replyValue || !content.id) return null;
 
     try {
       setReplySubmittingId(question.id);
       return await createForumMessage(`Respuesta a ${getUserName(question.user)}: ${replyValue}`);
     } finally {
       setReplySubmittingId(null);
+    }
+  };
+
+  const handleMaterialSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!content.id || materialFiles.length === 0) return;
+
+    try {
+      setMaterialSubmitting(true);
+      setMaterialError("");
+      const updated = await VideoService.addMaterials(content.id, materialFiles);
+      setContent((current) => ({
+        ...current,
+        ...updated,
+        category: getCategoryLabel(updated.category ?? current.category),
+        url: getContentUrl(updated) || getContentUrl(current),
+        materials: Array.isArray(updated.materials) ? updated.materials : current.materials,
+      }));
+      setMaterialFiles([]);
+    } catch (error) {
+      console.error("Error subiendo materiales:", error);
+      setMaterialError(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "No se pudieron subir los materiales."
+      );
+    } finally {
+      setMaterialSubmitting(false);
+    }
+  };
+
+  const handleMaterialDelete = async (material) => {
+    if (!content.id || !material?.id) return;
+
+    try {
+      setDeletingMaterialId(material.id);
+      setMaterialError("");
+      const updated = await VideoService.deleteMaterial(content.id, material.id);
+      setContent((current) => ({
+        ...current,
+        ...updated,
+        category: getCategoryLabel(updated.category ?? current.category),
+        url: getContentUrl(updated) || getContentUrl(current),
+        materials: Array.isArray(updated.materials)
+          ? updated.materials
+          : current.materials.filter((item) => item.id !== material.id),
+      }));
+    } catch (error) {
+      console.error("Error eliminando material:", error);
+      setMaterialError(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "No se pudo eliminar el material."
+      );
+    } finally {
+      setDeletingMaterialId(null);
+    }
+  };
+
+  const handleContentDelete = async () => {
+    if (!content.id || contentDeleting) return;
+
+    try {
+      setContentDeleting(true);
+      await VideoService.delete(content.id);
+      navigate("/admin/videos", { replace: true });
+    } catch (error) {
+      console.error("Error eliminando contenido:", error);
+      setMaterialError(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "No se pudo eliminar el contenido."
+      );
+      setContentDeleting(false);
     }
   };
 
@@ -254,6 +342,20 @@ export default function VideoView() {
                       <MetaBadge icon="person" label={`Subido por ${authorName}`} />
                     </div>
                   </div>
+
+                  {canDeleteContent && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      disabled={contentDeleting}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {contentDeleting ? "hourglass_empty" : "delete"}
+                      </span>
+                      {contentDeleting ? "Eliminando..." : "Eliminar contenido"}
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-hidden rounded-2xl bg-black shadow-2xl">
@@ -347,18 +449,66 @@ export default function VideoView() {
                       Material de apoyo
                     </h3>
                     <div className="flex flex-col gap-3">
-                      <SupportButton
-                        icon="picture_as_pdf"
-                        title="Checklist Renta 2024"
-                        meta="PDF"
-                        tone="red"
-                      />
-                      <SupportButton
-                        icon="table_view"
-                        title="Calculadora de Retenciones"
-                        meta="EXCEL"
-                        tone="blue"
-                      />
+                      {canManageMaterials && (
+                        <form className="flex flex-col gap-3" onSubmit={handleMaterialSubmit}>
+                          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition hover:bg-primary/10">
+                            <span className="material-symbols-outlined text-lg">upload_file</span>
+                            Seleccionar PDF
+                            <input
+                              type="file"
+                              accept="application/pdf,.pdf"
+                              multiple
+                              className="hidden"
+                              disabled={materialSubmitting}
+                              onChange={(event) => setMaterialFiles(Array.from(event.target.files || []))}
+                            />
+                          </label>
+
+                          {materialFiles.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {materialFiles.map((file) => (
+                                <span
+                                  key={`${file.name}-${file.size}`}
+                                  className="truncate rounded-lg bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 dark:bg-red-900/20"
+                                  title={file.name}
+                                >
+                                  {file.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {materialError && (
+                            <p className="text-sm font-medium text-red-500">{materialError}</p>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={materialSubmitting || materialFiles.length === 0}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {materialSubmitting ? "Subiendo..." : "Subir material"}
+                          </button>
+                        </form>
+                      )}
+
+                      {materials.length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                          Este contenido no tiene materiales PDF asociados.
+                        </p>
+                      ) : (
+                        materials.map((material) => (
+                          <SupportButton
+                            key={material.id || material.driveFileId}
+                            title={material.fileName || "Material PDF"}
+                            meta={formatFileSize(material.sizeBytes)}
+                            href={material.driveUrl}
+                            canDelete={canManageMaterials}
+                            isDeleting={deletingMaterialId === material.id}
+                            onDelete={() => setMaterialToDelete(material)}
+                          />
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -367,6 +517,114 @@ export default function VideoView() {
           </div>
         </main>
       </div>
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              if (!contentDeleting) setIsDeleteModalOpen(false);
+            }}
+            aria-label="Cerrar modal"
+          />
+
+          <div className="relative w-full max-w-md rounded-xl border border-border-light bg-card-light p-6 shadow-xl dark:border-border-dark dark:bg-card-dark">
+            <div className="flex items-start gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+                  Eliminar contenido
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-text-secondary-light dark:text-text-secondary-dark">
+                  Esta accion eliminara el contenido, sus materiales de apoyo, estadisticas e hilos de conversacion.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={contentDeleting}
+                className="rounded-lg bg-surface-light px-4 py-2 text-sm font-semibold transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-surface-dark dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleContentDelete}
+                disabled={contentDeleting}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {contentDeleting ? "hourglass_empty" : "delete"}
+                </span>
+                {contentDeleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {materialToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => {
+              if (!deletingMaterialId) setMaterialToDelete(null);
+            }}
+            aria-label="Cerrar modal"
+          />
+
+          <div className="relative w-full max-w-md rounded-xl border border-border-light bg-card-light p-6 shadow-xl dark:border-border-dark dark:bg-card-dark">
+            <div className="flex items-start gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300">
+                <span className="material-symbols-outlined">picture_as_pdf</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+                  Eliminar material
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-text-secondary-light dark:text-text-secondary-dark">
+                  Este archivo se eliminara del contenido y tambien se borrara del almacenamiento local.
+                </p>
+                <p className="mt-3 break-words rounded-lg bg-surface-light px-3 py-2 text-sm font-semibold text-text-primary-light [overflow-wrap:anywhere] dark:bg-surface-dark dark:text-text-primary-dark">
+                  {materialToDelete.fileName || "Material PDF"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setMaterialToDelete(null)}
+                disabled={Boolean(deletingMaterialId)}
+                className="rounded-lg bg-surface-light px-4 py-2 text-sm font-semibold transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-surface-dark dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleMaterialDelete(materialToDelete);
+                  setMaterialToDelete(null);
+                }}
+                disabled={Boolean(deletingMaterialId)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {deletingMaterialId ? "hourglass_empty" : "delete"}
+                </span>
+                {deletingMaterialId ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -378,22 +636,34 @@ const MetaBadge = ({ icon, label }) => (
   </span>
 );
 
-const SupportButton = ({ icon, title, meta, tone }) => {
-  const color =
-    tone === "red"
-      ? "bg-red-100 text-red-600 dark:bg-red-900/30"
-      : "bg-blue-100 text-blue-600 dark:bg-blue-900/30";
-
+const SupportButton = ({ title, meta, href, canDelete = false, isDeleting = false, onDelete }) => {
   return (
-    <button className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition-all hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
-      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${color}`}>
-        <span className="material-symbols-outlined">{icon}</span>
-      </div>
-      <div>
-        <p className="text-sm font-bold">{title}</p>
-        <p className="text-[10px] uppercase tracking-wider text-slate-500">{meta}</p>
-      </div>
-    </button>
+    <div className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition-all hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+      <a className="flex min-w-0 flex-1 items-center gap-3" href={href} target="_blank" rel="noreferrer">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30">
+          <span className="material-symbols-outlined">picture_as_pdf</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-bold leading-5 [overflow-wrap:anywhere]">{title}</p>
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">{meta}</p>
+        </div>
+      </a>
+
+      {canDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeleting}
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-900/20"
+          aria-label={`Eliminar ${title}`}
+          title="Eliminar material"
+        >
+          <span className="material-symbols-outlined text-lg">
+            {isDeleting ? "hourglass_empty" : "delete"}
+          </span>
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -492,6 +762,13 @@ const getUserName = (user) => {
   return fullName || user?.email || "Usuario";
 };
 
+const getCategoryLabel = (category) => {
+  if (typeof category === "string" && category.trim()) return category;
+  return category?.categoryName || "Sin categoria";
+};
+
+const getContentUrl = (content) => content?.url || content?.urlVideo || "";
+
 const normalizeRole = (role) =>
   String(role || "USER")
     .replace(/^ROLE_/i, "")
@@ -510,6 +787,16 @@ const formatDate = (value) => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+};
+
+const formatFileSize = (value) => {
+  const bytes = Number(value);
+  if (!bytes || Number.isNaN(bytes)) return "PDF";
+
+  const mb = bytes / 1024 / 1024;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 };
 
 const getYouTubeVideoId = (url) => {

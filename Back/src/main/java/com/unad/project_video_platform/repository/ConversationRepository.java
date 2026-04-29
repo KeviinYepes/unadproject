@@ -14,4 +14,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Inte
     List<Conversation> findByContentIdOrderByCreatedAtDesc(Integer contentId);
 
     List<Conversation> findAllByOrderByCreatedAtDesc();
+
+    void deleteByContentId(Integer contentId);
 }

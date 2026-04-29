@@ -1,13 +1,21 @@
 package com.unad.project_video_platform.service;
 
+import com.unad.project_video_platform.dto.LocalUploadResult;
+import com.unad.project_video_platform.entity.ContentMaterial;
+import com.unad.project_video_platform.entity.Conversation;
 import com.unad.project_video_platform.entity.Video;
 import com.unad.project_video_platform.repository.CategoryRepository;
+import com.unad.project_video_platform.repository.ContentMaterialRepository;
+import com.unad.project_video_platform.repository.ConversationRepository;
+import com.unad.project_video_platform.repository.QuestionRepository;
 import com.unad.project_video_platform.repository.UserRepository;
 import com.unad.project_video_platform.repository.VideoRepository;
+import com.unad.project_video_platform.repository.VideoStatsRepository;
 import com.unad.project_video_platform.service.impl.IVideoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +32,21 @@ public class VideoService implements IVideoService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ContentMaterialRepository contentMaterialRepository;
+
+    @Autowired
+    private ConversationRepository conversationRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
+
+    @Autowired
+    private VideoStatsRepository videoStatsRepository;
+
+    @Autowired
+    private LocalContentMaterialStorageService localContentMaterialStorageService;
+
     public List<Video> getAllVideos() {
         return videoRepository.findAll();
     }
@@ -37,6 +60,41 @@ public class VideoService implements IVideoService {
         validateVideo(video);
         hydrateReferences(video);
         return videoRepository.save(video);
+    }
+
+    @Transactional
+    public Video createVideo(Video video, MultipartFile[] materials) {
+        Video saved = createVideo(video);
+        saveMaterials(saved, materials);
+        return videoRepository.findById(saved.getId()).orElse(saved);
+    }
+
+    @Transactional
+    public Video addMaterials(Integer id, MultipartFile[] materials) {
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Contenido no encontrado con id: " + id));
+
+        saveMaterials(video, materials);
+        return videoRepository.findById(id).orElse(video);
+    }
+
+    @Transactional
+    public Video deleteMaterial(Integer id, Integer materialId) {
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Contenido no encontrado con id: " + id));
+
+        ContentMaterial material = contentMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new RuntimeException("Material no encontrado con id: " + materialId));
+
+        if (material.getContent() == null || !id.equals(material.getContent().getId())) {
+            throw new IllegalArgumentException("El material no pertenece al contenido indicado");
+        }
+
+        localContentMaterialStorageService.delete(material.getDriveFileId());
+        contentMaterialRepository.delete(material);
+        video.getMaterials().removeIf(current -> materialId.equals(current.getId()));
+
+        return video;
     }
 
     @Transactional
@@ -58,10 +116,25 @@ public class VideoService implements IVideoService {
 
     @Transactional
     public void deleteVideo(Integer id) {
-        if (!videoRepository.existsById(id)) {
-            throw new RuntimeException("Contenido no encontrado con id: " + id);
+        Video video = videoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Contenido no encontrado con id: " + id));
+
+        List<ContentMaterial> materials = contentMaterialRepository.findByContentIdOrderByPositionAscIdAsc(id);
+        materials.forEach(material -> localContentMaterialStorageService.delete(material.getDriveFileId()));
+
+        List<Integer> conversationIds = conversationRepository.findByContentIdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(Conversation::getId)
+                .toList();
+
+        videoStatsRepository.deleteByContentId(id);
+        if (!conversationIds.isEmpty()) {
+            questionRepository.deleteByConversationIdIn(conversationIds);
         }
-        videoRepository.deleteById(id);
+        conversationRepository.deleteByContentId(id);
+        contentMaterialRepository.deleteAll(materials);
+        video.getMaterials().clear();
+        videoRepository.delete(video);
     }
 
     private void validateVideo(Video video) {
@@ -86,6 +159,58 @@ public class VideoService implements IVideoService {
         if (video.getDescription() != null) {
             video.setDescription(video.getDescription().trim());
         }
+    }
+
+    private void saveMaterials(Video video, MultipartFile[] materials) {
+        if (materials == null || materials.length == 0) {
+            return;
+        }
+
+        int position = contentMaterialRepository.findByContentIdOrderByPositionAscIdAsc(video.getId())
+                .stream()
+                .map(ContentMaterial::getPosition)
+                .filter(value -> value != null)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
+        for (MultipartFile file : materials) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+
+            validatePdf(file);
+            LocalUploadResult uploadedFile = localContentMaterialStorageService.savePdf(file);
+
+            ContentMaterial material = new ContentMaterial();
+            material.setContent(video);
+            material.setDriveFileId(uploadedFile.storedFileName());
+            material.setDriveUrl(uploadedFile.url());
+            material.setFileName(resolveFileName(file));
+            material.setMimeType(resolveMimeType(file));
+            material.setSizeBytes(file.getSize());
+            material.setPosition(position++);
+
+            ContentMaterial savedMaterial = contentMaterialRepository.save(material);
+            video.getMaterials().add(savedMaterial);
+        }
+    }
+
+    private void validatePdf(MultipartFile file) {
+        String fileName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        String contentType = file.getContentType() == null ? "" : file.getContentType();
+
+        if (!"application/pdf".equalsIgnoreCase(contentType) && !fileName.endsWith(".pdf")) {
+            throw new IllegalArgumentException("Solo se permiten archivos PDF como material de apoyo");
+        }
+    }
+
+    private String resolveFileName(MultipartFile file) {
+        String originalName = file.getOriginalFilename();
+        return originalName == null || originalName.isBlank() ? "material.pdf" : originalName;
+    }
+
+    private String resolveMimeType(MultipartFile file) {
+        String contentType = file.getContentType();
+        return contentType == null || contentType.isBlank() ? "application/pdf" : contentType;
     }
 
     private void hydrateReferences(Video video) {

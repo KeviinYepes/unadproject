@@ -20,6 +20,20 @@ const VideoService = {
       createdBy: contentData?.createdById ? { id: Number(contentData.createdById) } : null,
     };
 
+    if (contentData?.materials?.length) {
+      const formData = new FormData();
+      formData.append("content", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+
+      Array.from(contentData.materials).forEach((file) => {
+        formData.append("materials", file);
+      });
+
+      const response = await api.post("/api/content", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data.data || response.data;
+    }
+
     const response = await api.post("/api/content", payload);
     return response.data.data || response.data;
   },
@@ -34,6 +48,23 @@ const VideoService = {
     };
 
     const response = await api.put(`/api/content/${id}`, payload);
+    return response.data.data || response.data;
+  },
+
+  addMaterials: async (id, materials) => {
+    const formData = new FormData();
+    Array.from(materials || []).forEach((file) => {
+      formData.append("materials", file);
+    });
+
+    const response = await api.post(`/api/content/${id}/materials`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data.data || response.data;
+  },
+
+  deleteMaterial: async (id, materialId) => {
+    const response = await api.delete(`/api/content/${id}/materials/${materialId}`);
     return response.data.data || response.data;
   },
 
