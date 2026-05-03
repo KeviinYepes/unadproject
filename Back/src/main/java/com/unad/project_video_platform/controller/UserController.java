@@ -7,6 +7,7 @@ import com.unad.project_video_platform.dto.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,34 @@ public class UserController {
 
     @Autowired
     private IUserService userService;
+
+    @GetMapping("/profile/current")
+    public ResponseEntity<ApiResponse<User>> getCurrentUser(Authentication authentication) {
+        String email = authentication.getName();
+        return userService.getUserByEmail(email)
+                .map(user -> ResponseEntity.ok(ApiResponse.ok("Current user found", user)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.<User>notFound("User not found with email: " + email)));
+    }
+
+    @PutMapping("/profile/current")
+    public ResponseEntity<ApiResponse<User>> updateCurrentUser(
+            Authentication authentication,
+            @RequestBody User userDetails) {
+        try {
+            User updatedUser = userService.updateProfile(authentication.getName(), userDetails);
+            return ResponseEntity.ok(ApiResponse.ok("Profile updated", updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.<User>badRequest(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<User>notFound(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<User>internalError(e.getMessage()));
+        }
+    }
 
     /**
      * GET /api/users - Obtiene todos los usuarios

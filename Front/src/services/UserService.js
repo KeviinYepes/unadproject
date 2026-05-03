@@ -24,6 +24,23 @@ const UserService = {
     return response.data.data || response.data;
   },
 
+  getMe: async () => {
+    const response = await api.get("/api/users/profile/current");
+    return response.data.data || response.data;
+  },
+
+  updateMe: async (userData) => {
+    const payload = {
+      firstName: userData?.firstName,
+      lastName: userData?.lastName,
+      documentType: userData?.documentType,
+      documentNumber: userData?.documentNumber,
+    };
+
+    const response = await api.put("/api/users/profile/current", payload);
+    return response.data.data || response.data;
+  },
+
   /**
    * Busca un usuario por email
    * @param {string} email

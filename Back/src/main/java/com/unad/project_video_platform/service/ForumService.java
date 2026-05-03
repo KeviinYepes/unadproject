@@ -65,7 +65,7 @@ public class ForumService implements IForumService {
         int answerCount = 0;
         List<NotificationItemResponse> items = new ArrayList<>();
 
-        for (Conversation conversation : conversationRepository.findAll()) {
+        for (Conversation conversation : conversationRepository.findAllByOrderByCreatedAtDesc()) {
             List<Question> questions = questionRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
             if (questions.isEmpty()) {
                 continue;
