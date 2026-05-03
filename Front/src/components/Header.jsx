@@ -13,6 +13,25 @@ export default function Header() {
   const notificationRef = useRef(null);
   const navigate = useNavigate();
 
+  const loadNotifications = async () => {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+      if (!currentUser?.userId) {
+        setNotificationCount(0);
+        setNotificationItems([]);
+        return;
+      }
+
+      const summary = await ForumService.getNotifications(currentUser.userId);
+      setNotificationCount(Number(summary?.total) || 0);
+      setNotificationItems(Array.isArray(summary?.items) ? summary.items : []);
+    } catch (error) {
+      console.error('Error cargando notificaciones:', error);
+      setNotificationCount(0);
+      setNotificationItems([]);
+    }
+  };
+
   const loadProfilePhoto = () => {
     const currentUser = AuthService.getCurrentUser();
     const storedPhoto = localStorage.getItem(`profilePhoto:${currentUser?.userId || "current"}`);
@@ -29,28 +48,13 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const currentUser = AuthService.getCurrentUser();
-        if (!currentUser?.userId) {
-          setNotificationCount(0);
-          setNotificationItems([]);
-          return;
-        }
-
-        const summary = await ForumService.getNotifications(currentUser.userId);
-        setNotificationCount(Number(summary?.total) || 0);
-        setNotificationItems(Array.isArray(summary?.items) ? summary.items : []);
-      } catch (error) {
-        console.error('Error cargando notificaciones:', error);
-        setNotificationCount(0);
-        setNotificationItems([]);
-      }
-    };
-
     loadNotifications();
     window.addEventListener('forum-notifications-changed', loadNotifications);
-    return () => window.removeEventListener('forum-notifications-changed', loadNotifications);
+    window.addEventListener('focus', loadNotifications);
+    return () => {
+      window.removeEventListener('forum-notifications-changed', loadNotifications);
+      window.removeEventListener('focus', loadNotifications);
+    };
   }, []);
 
   useEffect(() => {
@@ -99,7 +103,15 @@ export default function Header() {
         <div className="relative" ref={notificationRef}>
           <button
             type="button"
-            onClick={() => setIsNotificationMenuOpen((current) => !current)}
+            onClick={() => {
+              setIsNotificationMenuOpen((current) => {
+                const nextValue = !current;
+                if (nextValue) {
+                  loadNotifications();
+                }
+                return nextValue;
+              });
+            }}
             className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
           >
             <span className="material-symbols-outlined text-2xl">notifications</span>

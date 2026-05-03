@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import Toast from "../components/Toast";
@@ -23,6 +24,7 @@ const toProfileForm = (user, photo) => ({
 });
 
 const Profile = () => {
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const currentUser = AuthService.getCurrentUser();
   const photoKey = useMemo(() => getPhotoKey(currentUser?.userId), [currentUser?.userId]);
@@ -130,6 +132,22 @@ const Profile = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem(photoKey);
+    AuthService.logout();
+    window.dispatchEvent(new CustomEvent("profile-photo-changed"));
+    navigate("/login", { replace: true });
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(currentUser?.role === "ADMIN" ? "/admin/dashboard" : "/main", { replace: true });
+  };
+
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedProfile);
 
   return (
@@ -141,10 +159,31 @@ const Profile = () => {
         <main className="flex-1 p-8">
           <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-slate-100 p-8 dark:border-slate-800">
-              <h1 className="text-3xl font-black">Editar Perfil</h1>
-              <p className="mt-2 text-slate-500 dark:text-slate-400">
-                Administra tu informacion visible en la organizacion.
-              </p>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="mb-4 inline-flex items-center gap-1 text-sm font-bold text-primary transition hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-base">arrow_back</span>
+                    Volver
+                  </button>
+                  <h1 className="text-3xl font-black">Editar Perfil</h1>
+                  <p className="mt-2 text-slate-500 dark:text-slate-400">
+                    Administra tu informacion visible en la organizacion.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
+                >
+                  <span className="material-symbols-outlined text-lg">logout</span>
+                  Cerrar sesion
+                </button>
+              </div>
             </div>
 
             {loading ? (
