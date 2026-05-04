@@ -34,6 +34,19 @@ const AuthService = {
     }
   },
 
+  recoverPassword: async (payload) => {
+    try {
+      const response = await api.post("/api/auth/recover-password", payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "No se pudo recuperar la contrasena";
+      throw { message: errorMessage };
+    }
+  },
+
   /**
    * Cierra sesión del usuario actual
    */

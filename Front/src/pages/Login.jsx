@@ -10,7 +10,14 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isRecoverOpen, setIsRecoverOpen] = useState(false);
+  const [recoverLoading, setRecoverLoading] = useState(false);
+  const [recoverError, setRecoverError] = useState('');
+  const [recoverForm, setRecoverForm] = useState({
+    email: ''
+  });
 
   const handleChange = (e) => {
     setFormData({
@@ -18,6 +25,15 @@ export default function Login() {
       [e.target.name]: e.target.value
     });
     setError('');
+    setSuccess('');
+  };
+
+  const handleRecoverChange = (e) => {
+    setRecoverForm({
+      ...recoverForm,
+      [e.target.name]: e.target.value
+    });
+    setRecoverError('');
   };
 
   const handleSubmit = async (e) => {
@@ -26,13 +42,41 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await AuthService.login(formData);
+      await AuthService.login(formData);
       navigate('/main');
     } catch (err) {
       console.error('Error de login:', err);
-      setError(err.message || 'Credenciales inválidas. Por favor, intenta de nuevo.');
+      setError(err.message || 'Credenciales invalidas. Por favor, intenta de nuevo.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openRecoverModal = () => {
+    setRecoverForm({
+      email: formData.email
+    });
+    setRecoverError('');
+    setIsRecoverOpen(true);
+  };
+
+  const handleRecoverSubmit = async (e) => {
+    e.preventDefault();
+    setRecoverLoading(true);
+    setRecoverError('');
+
+    try {
+      await AuthService.recoverPassword(recoverForm);
+      setFormData((current) => ({
+        ...current,
+        email: recoverForm.email
+      }));
+      setSuccess('Te enviamos la clave actual al correo registrado.');
+      setIsRecoverOpen(false);
+    } catch (err) {
+      setRecoverError(err.message || 'No se pudo enviar el correo de recuperacion.');
+    } finally {
+      setRecoverLoading(false);
     }
   };
 
@@ -41,7 +85,6 @@ export default function Login() {
       <div className="relative flex min-h-screen w-full flex-col">
         <div className="flex h-full min-h-screen grow flex-col">
           <div className="flex flex-1">
-            {/* Lado izquierdo (Hero / Imagen) */}
             <div className="relative hidden h-full w-full flex-col justify-end bg-blue-900 p-8 lg:flex">
               <div
                 className="absolute inset-0 z-0 h-full w-full bg-cover bg-center"
@@ -53,18 +96,16 @@ export default function Login() {
               <div className="absolute inset-0 z-10 h-full w-full bg-primary/60 dark:bg-primary/75" />
               <div className="relative z-20 flex flex-col gap-4 text-white">
                 <h1 className="text-4xl font-bold leading-tight">
-                  Domina tus dudas en Minutos
+                  Domina tus dudas en minutos
                 </h1>
                 <p className="text-lg font-normal text-white/90">
-                  Guías paso a paso en video para que nunca vuelvas a cometer un error en un formulario.
+                  Guias paso a paso en video para que nunca vuelvas a cometer un error en un formulario.
                 </p>
               </div>
             </div>
 
-            {/* Lado derecho (Formulario) */}
             <div className="flex w-full flex-col items-center justify-center bg-background-light px-4 py-12 dark:bg-background-dark sm:px-6 lg:px-8">
               <div className="flex w-full max-w-md flex-col items-center gap-10">
-                {/* Logo y texto informativo */}
                 <div className="flex flex-col items-center gap-4 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <svg
@@ -84,26 +125,30 @@ export default function Login() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-[#101922] dark:text-white">
-                      ¡Hola de nuevo!
+                      Hola de nuevo
                     </h1>
                     <p className="text-base font-normal text-slate-600 dark:text-slate-400">
-                      Ingresa para continuar aprendiendo y completar tus formularios con éxito.
+                      Ingresa para continuar aprendiendo y completar tus formularios con exito.
                     </p>
                   </div>
                 </div>
 
                 <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit}>
-                  {/* Mensaje de error */}
                   {error && (
-                    <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
                       <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                     </div>
                   )}
 
-                  {/* Correo Electrónico */}
+                  {success && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+                      <p className="text-sm text-green-700 dark:text-green-300">{success}</p>
+                    </div>
+                  )}
+
                   <label className="flex w-full flex-col">
                     <p className="pb-2 text-sm font-medium leading-normal text-[#101922] dark:text-slate-300">
-                      Correo Electrónico
+                      Correo Electronico
                     </p>
                     <div className="flex w-full flex-1 items-stretch rounded-lg">
                       <div className="flex items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-background-light pl-4 text-slate-500 dark:border-slate-700 dark:bg-background-dark">
@@ -122,10 +167,9 @@ export default function Login() {
                     </div>
                   </label>
 
-                  {/* Número de Documento */}
                   <label className="flex w-full flex-col">
                     <p className="pb-2 text-sm font-medium leading-normal text-[#101922] dark:text-slate-300">
-                      Número de Documento
+                      Numero de Documento
                     </p>
                     <div className="flex w-full flex-1 items-stretch rounded-lg">
                       <div className="flex items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-background-light pl-4 text-slate-500 dark:border-slate-700 dark:bg-background-dark">
@@ -134,7 +178,7 @@ export default function Login() {
                       <input
                         type={showPassword ? "text" : "password"}
                         className="form-input h-12 w-full min-w-0 flex-1 border border-r-0 border-slate-300 bg-background-light p-3 text-base font-normal text-[#101922] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-background-dark dark:text-white"
-                        placeholder="Tu número de documento"
+                        placeholder="Tu numero de documento"
                         name="documentNumber"
                         value={formData.documentNumber}
                         onChange={handleChange}
@@ -156,28 +200,26 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex h-12 w-full min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-5 text-base font-bold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 dark:focus:ring-offset-background-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-12 w-full min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-5 text-base font-bold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 dark:focus:ring-offset-background-dark disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="truncate">
-                      {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                      {loading ? 'Iniciando sesion...' : 'Iniciar Sesion'}
                     </span>
                   </button>
-                  
-                  <div className="flex flex-col gap-2">
-                    <p className="cursor-pointer text-center text-sm font-normal text-slate-600 underline hover:text-primary dark:text-slate-400">
-                      ¿Olvidaste tu contraseña?
-                    </p>
-                    <p className="text-center text-sm font-normal text-slate-600 dark:text-slate-400">
-                      ¿No tienes cuenta? <span className="cursor-pointer font-bold text-primary hover:underline">Regístrate gratis</span>
-                    </p>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={openRecoverModal}
+                    className="text-center text-sm font-normal text-slate-600 underline hover:text-primary dark:text-slate-400"
+                  >
+                    Olvidaste tu contrasena?
+                  </button>
                 </form>
 
-                {/* Footer del Formulario */}
                 <div className="w-full text-center text-xs text-slate-500 dark:text-slate-500">
-                  <p>© 2024 GuíaFácil S.A. Simplificando tus trámites.</p>
+                  <p>2024 GuiaFacil S.A. Simplificando tus tramites.</p>
                   <p className="mt-1">
-                    ¿Necesitas ayuda con un formulario específico?{' '}
+                    Necesitas ayuda con un formulario especifico?{' '}
                     <a href="#" className="font-medium underline hover:text-primary">
                       Contactar a un experto
                     </a>
@@ -188,6 +230,74 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {isRecoverOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => {
+              if (!recoverLoading) setIsRecoverOpen(false);
+            }}
+            aria-label="Cerrar recuperacion"
+          />
+
+          <form
+            onSubmit={handleRecoverSubmit}
+            className="relative w-full max-w-md rounded-xl border border-slate-700 bg-background-light p-6 shadow-xl dark:bg-background-dark"
+          >
+            <div className="mb-5">
+              <h2 className="text-xl font-bold text-[#101922] dark:text-white">
+                Recuperar contrasena
+              </h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Escribe tu correo registrado y enviaremos tu clave de acceso actual.
+              </p>
+            </div>
+
+            {recoverError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+                <p className="text-sm text-red-600 dark:text-red-400">{recoverError}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col">
+                <span className="pb-2 text-sm font-medium text-[#101922] dark:text-slate-300">
+                  Correo electronico
+                </span>
+                <input
+                  type="email"
+                  name="email"
+                  value={recoverForm.email}
+                  onChange={handleRecoverChange}
+                  disabled={recoverLoading}
+                  required
+                  className="form-input h-11 rounded-lg border border-slate-300 bg-background-light p-3 text-sm text-[#101922] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-background-dark dark:text-white"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsRecoverOpen(false)}
+                disabled={recoverLoading}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={recoverLoading}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {recoverLoading ? 'Enviando...' : 'Enviar clave'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,24 @@
+{
+  "name": "unadproject",
+  "version": "1.0.0",
+  "description": "This a repository contains our final project for the Software Technology course, where we addressed a real-world problem using a technological solution through programming.",
+  "main": "proxy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KeviinYepes/UnadProject.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KeviinYepes/UnadProject/issues"
+  },
+  "homepage": "https://github.com/KeviinYepes/UnadProject#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^3.0.5"
+  }
+}

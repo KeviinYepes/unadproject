@@ -18,13 +18,10 @@ import java.util.UUID;
 public class LocalContentMaterialStorageService {
 
     private final Path uploadDirectory;
-    private final String publicBaseUrl;
 
     public LocalContentMaterialStorageService(
-            @Value("${app.storage.materials-path:uploads/materials}") String materialsPath,
-            @Value("${app.public-base-url:http://localhost:8080}") String publicBaseUrl) {
+            @Value("${app.storage.materials-path:uploads/materials}") String materialsPath) {
         this.uploadDirectory = Paths.get(materialsPath).toAbsolutePath().normalize();
-        this.publicBaseUrl = publicBaseUrl;
     }
 
     public LocalUploadResult savePdf(MultipartFile file) {
@@ -40,8 +37,7 @@ public class LocalContentMaterialStorageService {
 
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
-            String baseUrl = publicBaseUrl.replaceAll("/+$", "");
-            String url = baseUrl + "/api/content/materials/" + storedFileName;
+            String url = "/api/content/materials/" + storedFileName;
             return new LocalUploadResult(storedFileName, url);
         } catch (Exception e) {
             throw new RuntimeException("No se pudo guardar el PDF localmente: " + e.getMessage(), e);
