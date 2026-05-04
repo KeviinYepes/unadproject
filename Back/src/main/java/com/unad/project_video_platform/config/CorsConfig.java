@@ -14,12 +14,16 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
+        configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:5173",
             "http://localhost:5174",
+            "http://localhost:5175",
             "http://localhost:3000",
             "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174"
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:5175",
+            "https://*.ngrok-free.app",
+            "https://*.ngrok-free.dev"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

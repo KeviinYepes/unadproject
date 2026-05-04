@@ -8,33 +8,53 @@ export default function Header() {
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationItems, setNotificationItems] = useState([]);
+  const [profilePhoto, setProfilePhoto] = useState("");
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const currentUser = AuthService.getCurrentUser();
-        if (!currentUser?.userId) {
-          setNotificationCount(0);
-          setNotificationItems([]);
-          return;
-        }
-
-        const summary = await ForumService.getNotifications(currentUser.userId);
-        setNotificationCount(Number(summary?.total) || 0);
-        setNotificationItems(Array.isArray(summary?.items) ? summary.items : []);
-      } catch (error) {
-        console.error('Error cargando notificaciones:', error);
+  const loadNotifications = async () => {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+      if (!currentUser?.userId) {
         setNotificationCount(0);
         setNotificationItems([]);
+        return;
       }
-    };
 
+      const summary = await ForumService.getNotifications(currentUser.userId);
+      setNotificationCount(Number(summary?.total) || 0);
+      setNotificationItems(Array.isArray(summary?.items) ? summary.items : []);
+    } catch (error) {
+      console.error('Error cargando notificaciones:', error);
+      setNotificationCount(0);
+      setNotificationItems([]);
+    }
+  };
+
+  const loadProfilePhoto = () => {
+    const currentUser = AuthService.getCurrentUser();
+    const storedPhoto = localStorage.getItem(`profilePhoto:${currentUser?.userId || "current"}`);
+    setProfilePhoto(
+      storedPhoto ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.email || "Usuario")}&background=2563eb&color=fff&size=256`
+    );
+  };
+
+  useEffect(() => {
+    loadProfilePhoto();
+    window.addEventListener('profile-photo-changed', loadProfilePhoto);
+    return () => window.removeEventListener('profile-photo-changed', loadProfilePhoto);
+  }, []);
+
+  useEffect(() => {
     loadNotifications();
     window.addEventListener('forum-notifications-changed', loadNotifications);
-    return () => window.removeEventListener('forum-notifications-changed', loadNotifications);
+    window.addEventListener('focus', loadNotifications);
+    return () => {
+      window.removeEventListener('forum-notifications-changed', loadNotifications);
+      window.removeEventListener('focus', loadNotifications);
+    };
   }, []);
 
   useEffect(() => {
@@ -83,7 +103,15 @@ export default function Header() {
         <div className="relative" ref={notificationRef}>
           <button
             type="button"
-            onClick={() => setIsNotificationMenuOpen((current) => !current)}
+            onClick={() => {
+              setIsNotificationMenuOpen((current) => {
+                const nextValue = !current;
+                if (nextValue) {
+                  loadNotifications();
+                }
+                return nextValue;
+              });
+            }}
             className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
           >
             <span className="material-symbols-outlined text-2xl">notifications</span>
@@ -144,8 +172,7 @@ export default function Header() {
           <div
             className="h-10 w-10 cursor-pointer rounded-full bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage:
-                "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDNI4hMAUIyv4ffDBZGdjOGyb81zdNnseaqZB5GVQpk0KPDJi7CnsjZ-2IfG70EXL7XLdbhG2LekwQm1mToQNg6JAwRPs4DuVGvPgdyShBStgENRHHBXZo7Q1MaKBOe4TYmZzZMJC4P0TvK-0RtylqA-QHX_egtfcGwlDQkF2oPtQZa2s67E0HquLC1hazAqrUV7Kd9w8SRWSMLXlV4W7UUdQf9j_ph9RmRw6A4uG5sbvoGWHRrTsnaHuj9SFEmk2yOCbaEuFeUUTIQ')",
+              backgroundImage: `url(${profilePhoto})`,
             }}
             onClick={toggleProfileMenu}
           />

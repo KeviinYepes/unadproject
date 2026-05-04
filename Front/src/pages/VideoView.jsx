@@ -6,6 +6,7 @@ import AuthService from "../services/AuthService";
 import VideoStatsService from "../services/VideoStatsService";
 import ForumService from "../services/ForumService";
 import VideoService from "../services/VideoService";
+import { buildApiUrl } from "../config/api";
 
 export default function VideoView() {
   const location = useLocation();
@@ -502,7 +503,7 @@ export default function VideoView() {
                             key={material.id || material.driveFileId}
                             title={material.fileName || "Material PDF"}
                             meta={formatFileSize(material.sizeBytes)}
-                            href={material.driveUrl}
+                            href={getMaterialUrl(material)}
                             canDelete={canManageMaterials}
                             isDeleting={deletingMaterialId === material.id}
                             onDelete={() => setMaterialToDelete(material)}
@@ -768,6 +769,14 @@ const getCategoryLabel = (category) => {
 };
 
 const getContentUrl = (content) => content?.url || content?.urlVideo || "";
+
+const getMaterialUrl = (material) => {
+  if (material?.driveFileId) {
+    return buildApiUrl(`/api/content/materials/${material.driveFileId}`);
+  }
+
+  return buildApiUrl(material?.driveUrl);
+};
 
 const normalizeRole = (role) =>
   String(role || "USER")

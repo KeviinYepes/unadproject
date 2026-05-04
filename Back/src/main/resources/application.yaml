@@ -12,6 +12,18 @@ spring:
     username: admin
     password: admin123
     driver-class-name: org.postgresql.Driver
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:andres.garcia.1.8.3.4.9.5@gmail.com}
+    password: ${MAIL_PASSWORD:lhoa evgm ktnv acef}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   
   jpa:
     hibernate:
