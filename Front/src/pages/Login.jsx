@@ -96,10 +96,10 @@ export default function Login() {
               <div className="absolute inset-0 z-10 h-full w-full bg-primary/60 dark:bg-primary/75" />
               <div className="relative z-20 flex flex-col gap-4 text-white">
                 <h1 className="text-4xl font-bold leading-tight">
-                  Domina tus dudas en minutos
+                  Formacion de procesos en minutos
                 </h1>
                 <p className="text-lg font-normal text-white/90">
-                  Guias paso a paso en video para que nunca vuelvas a cometer un error en un formulario.
+                  Accede a guias y recursos multimedia para el correcto diligenciamiento de los formularios internos.
                 </p>
               </div>
             </div>

@@ -2,10 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Pagination from "../components/Pagination";
+import SegmentedControl from "../components/SegmentedControl";
 import UserService from "../services/UserService";
 import VideoService from "../services/VideoService";
 import VideoStatsService from "../services/VideoStatsService";
 import { getMaterialFormatsSummary } from "../utils/materialFormats";
+import {
+  parseDateInput,
+  buildDateRangeLabel,
+  resolvePeriodPresetRange,
+} from "../utils/periodFilters";
 
 const PAGE_SIZE = 6;
 
@@ -22,25 +28,15 @@ const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterValue, setFilterValue] = useState("");
+  const [selectedContentId, setSelectedContentId] = useState(null);
 
   const applyPeriodPreset = (preset) => {
     setPeriodPreset(preset);
     setCurrentPage(1);
 
-    if (preset === "all" || preset === "custom") {
-      setDateFrom("");
-      setDateTo("");
-      return;
-    }
-
-    const now = new Date();
-    const range =
-      preset === "thisMonth"
-        ? [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0)]
-        : [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 0)];
-
-    setDateFrom(toInputDate(range[0]));
-    setDateTo(toInputDate(range[1]));
+    const { dateFrom: nextFrom, dateTo: nextTo } = resolvePeriodPresetRange(preset);
+    setDateFrom(nextFrom);
+    setDateTo(nextTo);
   };
 
   const handleManualDateChange = (setter) => (event) => {
@@ -118,6 +114,16 @@ const AdminDashboard = () => {
     [analytics.videoRows, currentPage]
   );
 
+  const selectedContentRow = useMemo(
+    () => analytics.videoRows.find((row) => row.id === selectedContentId) || null,
+    [analytics.videoRows, selectedContentId]
+  );
+  const selectedContentUserRows = useMemo(() => {
+    if (!selectedContentId) return [];
+    const contentStats = scopedStats.filter((stat) => Number(stat.content?.id) === Number(selectedContentId));
+    return buildUserRows(contentStats);
+  }, [scopedStats, selectedContentId]);
+
   const isUserFiltered = filterType === "user" && Boolean(filterValue);
   const visibleTabs = [
     ["resumen", "Resumen"],
@@ -159,6 +165,38 @@ const AdminDashboard = () => {
 
     frameDocument.open();
     frameDocument.write(buildPdfReportHtml(analytics, periodLabel, filterLabel));
+    frameDocument.close();
+
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => frame.remove(), 1000);
+    };
+  };
+
+  const exportContentReport = (row, userRows) => {
+    const existingFrame = document.getElementById("pdf-content-report-frame");
+    existingFrame?.remove();
+
+    const frame = document.createElement("iframe");
+    frame.id = "pdf-content-report-frame";
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.style.opacity = "0";
+    document.body.appendChild(frame);
+
+    const frameDocument = frame.contentWindow?.document;
+    if (!frameDocument) return;
+
+    const periodLabel = buildDateRangeLabel(dateFrom, dateTo);
+    const filterLabel = buildFilterLabel(filterType, filterValue, categoryOptions, userOptions);
+
+    frameDocument.open();
+    frameDocument.write(buildContentPdfReportHtml(row, userRows, periodLabel, filterLabel));
     frameDocument.close();
 
     frame.onload = () => {
@@ -344,16 +382,26 @@ const AdminDashboard = () => {
                 onPageChange={(page) =>
                   setCurrentPage(clampPage(page, analytics.videoRows.length, PAGE_SIZE))
                 }
+                onSelectContent={(row) => setSelectedContentId(row.id)}
               />
             )}
           </div>
         </main>
       </div>
+
+      {selectedContentRow && (
+        <ContentDetailModal
+          row={selectedContentRow}
+          userRows={selectedContentUserRows}
+          onClose={() => setSelectedContentId(null)}
+          onExport={() => exportContentReport(selectedContentRow, selectedContentUserRows)}
+        />
+      )}
     </div>
   );
 };
 
-const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange }) => (
+const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange, onSelectContent }) => (
   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <section className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -370,8 +418,8 @@ const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange 
         </Panel>
       </div>
 
-      <Panel title="Rendimiento por contenido" subtitle="Ranking accionable para priorizar mejoras">
-        <ContentTable rows={paginatedVideoRows} />
+      <Panel title="Rendimiento por contenido" subtitle="Clic en un contenido para ver el detalle por usuario">
+        <ContentTable rows={paginatedVideoRows} onSelectContent={onSelectContent} />
         <Pagination
           page={currentPage}
           totalItems={analytics.videoRows.length}
@@ -505,25 +553,6 @@ const UsersAnalyticsView = ({ analytics }) => (
   </div>
 );
 
-const SegmentedControl = ({ value, onChange, options }) => (
-  <div className="flex items-center gap-1 rounded-lg bg-surface-light p-1 dark:bg-surface-dark">
-    {options.map(([key, label]) => (
-      <button
-        key={key}
-        type="button"
-        onClick={() => onChange(key)}
-        className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-          value === key
-            ? "bg-white text-primary shadow-sm dark:bg-card-dark"
-            : "text-text-secondary-light hover:text-primary dark:text-text-secondary-dark"
-        }`}
-      >
-        {label}
-      </button>
-    ))}
-  </div>
-);
-
 const MetricCard = ({ icon, title, value, detail }) => (
   <div className="rounded-xl border border-border-light bg-card-light p-5 shadow-sm dark:border-border-dark dark:bg-card-dark">
     <div className="mb-4 flex items-center justify-between">
@@ -553,7 +582,7 @@ const Panel = ({ title, subtitle, children }) => (
   </section>
 );
 
-const ContentTable = ({ rows }) => (
+const ContentTable = ({ rows, onSelectContent }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left">
       <thead className="bg-surface-light text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:bg-surface-dark dark:text-text-secondary-dark">
@@ -579,9 +608,10 @@ const ContentTable = ({ rows }) => (
           rows.map((row) => (
             <tr
               key={row.id}
-              className="border-b border-border-light transition last:border-b-0 hover:bg-background-light dark:border-border-dark dark:hover:bg-background-dark"
+              onClick={() => onSelectContent?.(row)}
+              className="cursor-pointer border-b border-border-light transition last:border-b-0 hover:bg-primary/5 dark:border-border-dark dark:hover:bg-primary/10"
             >
-              <td className="min-w-56 px-5 py-4 font-semibold">{row.title}</td>
+              <td className="min-w-56 px-5 py-4 font-semibold text-primary">{row.title}</td>
               <td className="px-5 py-4">{row.category}</td>
               <td className="px-5 py-4">{row.type}</td>
               <td className="px-5 py-4 text-right font-bold">{row.views.toLocaleString("es-CO")}</td>
@@ -596,6 +626,124 @@ const ContentTable = ({ rows }) => (
         )}
       </tbody>
     </table>
+  </div>
+);
+
+const ContentDetailModal = ({ row, userRows, onClose, onExport }) => (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <button
+      type="button"
+      className="absolute inset-0 bg-black/55"
+      onClick={onClose}
+      aria-label="Cerrar detalle de contenido"
+    />
+
+    <div
+      className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border-light bg-card-light shadow-xl dark:border-border-dark dark:bg-card-dark"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="content-detail-title"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-border-light p-6 dark:border-border-dark">
+        <div className="min-w-0">
+          <h2 id="content-detail-title" className="truncate text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+            {row.title}
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+            {row.category} &middot; {row.type}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-lg p-2 text-text-secondary-light transition hover:bg-surface-light dark:text-text-secondary-dark dark:hover:bg-surface-dark"
+          aria-label="Cerrar"
+        >
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <DetailStat label="Vistas" value={row.views.toLocaleString("es-CO")} />
+          <DetailStat label="Usuarios unicos" value={row.uniqueUsers} />
+          <DetailStat label="Tiempo visto" value={formatMinutes(row.watchTimeSeconds)} />
+          <DetailStat label="Estado" value={<StatusPill status={row.status} />} />
+        </div>
+
+        {userRows.length > 0 && (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-border-light bg-surface-light p-4 dark:border-border-dark dark:bg-surface-dark">
+            <span className="material-symbols-outlined text-primary">insights</span>
+            <p className="text-sm leading-6 text-text-secondary-light dark:text-text-secondary-dark">
+              <span className="font-bold text-text-primary-light dark:text-text-primary-dark">
+                {userRows[0].name}
+              </span>{" "}
+              (rol {userRows[0].role}) es quien mas consulta este contenido, con {userRows[0].views}{" "}
+              {userRows[0].views === 1 ? "vista" : "vistas"} y {formatMinutes(userRows[0].watchTimeSeconds)}.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-surface-light text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:bg-surface-dark dark:text-text-secondary-dark">
+              <tr>
+                <th className="px-4 py-3">Usuario</th>
+                <th className="px-4 py-3">Rol</th>
+                <th className="px-4 py-3 text-right">Vistas</th>
+                <th className="px-4 py-3 text-right">Tiempo</th>
+                <th className="px-4 py-3">Ultima actividad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userRows.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-4 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
+                    Este contenido todavia no tiene visualizaciones en el periodo seleccionado.
+                  </td>
+                </tr>
+              ) : (
+                userRows.map((user) => (
+                  <tr key={user.id} className="border-b border-border-light last:border-b-0 dark:border-border-dark">
+                    <td className="px-4 py-3 font-semibold">{user.name}</td>
+                    <td className="px-4 py-3">{user.role}</td>
+                    <td className="px-4 py-3 text-right font-bold">{user.views}</td>
+                    <td className="px-4 py-3 text-right">{formatMinutes(user.watchTimeSeconds)}</td>
+                    <td className="px-4 py-3">{formatDate(user.lastViewAt)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 border-t border-border-light p-4 dark:border-border-dark">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg bg-surface-light px-4 py-2 text-sm font-semibold transition hover:bg-slate-100 dark:bg-surface-dark dark:hover:bg-slate-800"
+        >
+          Cerrar
+        </button>
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={userRows.length === 0}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className="material-symbols-outlined text-lg">download</span>
+          Exportar reporte
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const DetailStat = ({ label, value }) => (
+  <div className="rounded-lg border border-border-light p-3 dark:border-border-dark">
+    <p className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">{label}</p>
+    <p className="mt-1 text-lg font-bold text-text-primary-light dark:text-text-primary-dark">{value}</p>
   </div>
 );
 
@@ -950,15 +1098,6 @@ const getPeriodBounds = (stat) => {
   return { start, end };
 };
 
-const parseDateInput = (value) => {
-  if (!value) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const toInputDate = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
 const filterStatsByDateRange = (stats, dateFrom, dateTo) => {
   const from = parseDateInput(dateFrom);
   let to = parseDateInput(dateTo);
@@ -976,19 +1115,6 @@ const filterStatsByDateRange = (stats, dateFrom, dateTo) => {
     if (effectiveTo && start > effectiveTo) return false;
     return true;
   });
-};
-
-const buildDateRangeLabel = (dateFrom, dateTo) => {
-  if (!dateFrom && !dateTo) return "Todo el historico";
-
-  const formatDay = (value) =>
-    new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "numeric" }).format(
-      parseDateInput(value)
-    );
-
-  if (dateFrom && dateTo) return `${formatDay(dateFrom)} al ${formatDay(dateTo)}`;
-  if (dateFrom) return `Desde ${formatDay(dateFrom)}`;
-  return `Hasta ${formatDay(dateTo)}`;
 };
 
 const buildInsights = ({ videoRows, categoryRows, userRows, metrics }) => {
@@ -1159,24 +1285,7 @@ const clampPage = (page, totalItems, pageSize) => {
   return Math.min(Math.max(1, page), totalPages);
 };
 
-const buildPdfReportHtml = (analytics, periodLabel, filterLabel) => {
-  const generatedAt = new Intl.DateTimeFormat("es-CO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date());
-
-  const { metrics, videoRows, categoryRows, trendRows, insights, userRows } = analytics;
-
-  return `
-    <!doctype html>
-    <html lang="es">
-      <head>
-        <meta charset="utf-8" />
-        <title>Reporte historico de metricas</title>
-        <style>
+const REPORT_STYLES = `
           @page { margin: 18mm 14mm; }
           * { box-sizing: border-box; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -1216,7 +1325,26 @@ const buildPdfReportHtml = (analytics, periodLabel, filterLabel) => {
           .rank:last-child { border-bottom: none; }
           .rank-index { flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px; background: #eef5ff; color: #2f5f9f; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
           .empty { color: #7c879e; font-size: 9.5px; font-style: italic; }
-        </style>
+`;
+
+const buildPdfReportHtml = (analytics, periodLabel, filterLabel) => {
+  const generatedAt = new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date());
+
+  const { metrics, videoRows, categoryRows, trendRows, insights, userRows } = analytics;
+
+  return `
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>Reporte historico de metricas</title>
+        <style>${REPORT_STYLES}</style>
       </head>
       <body>
         <h1>Reporte historico de metricas</h1>
@@ -1278,6 +1406,102 @@ const buildPdfReportHtml = (analytics, periodLabel, filterLabel) => {
         </div>
       </body>
     </html>
+  `;
+};
+
+const buildContentPdfReportHtml = (row, userRows, periodLabel, filterLabel) => {
+  const generatedAt = new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date());
+
+  const topUser = userRows[0];
+
+  return `
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>Reporte de contenido - ${escapeHtml(row.title)}</title>
+        <style>${REPORT_STYLES}</style>
+      </head>
+      <body>
+        <h1>${escapeHtml(row.title)}</h1>
+        <div class="subtitle">
+          ${escapeHtml(row.category)} &middot; ${escapeHtml(row.type)} | Periodo: ${escapeHtml(periodLabel)}${filterLabel ? ` | ${escapeHtml(filterLabel)}` : ""} | Generado el ${escapeHtml(generatedAt)}
+        </div>
+
+        <section class="metrics">
+          <div class="metric">
+            <div class="metric-label">Visualizaciones</div>
+            <div class="metric-value">${row.views.toLocaleString("es-CO")}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Usuarios unicos</div>
+            <div class="metric-value">${row.uniqueUsers}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Tiempo visto</div>
+            <div class="metric-value">${escapeHtml(formatMinutes(row.watchTimeSeconds))}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Estado</div>
+            <div class="metric-value">${buildStatusPillHtml(row.status)}</div>
+          </div>
+        </section>
+
+        <div class="panel">
+          <h2>Quien mas lo consulta</h2>
+          <h3>Persona con mayor actividad sobre este contenido</h3>
+          ${
+            topUser
+              ? `<p class="insight-text"><strong>${escapeHtml(topUser.name)}</strong> (rol ${escapeHtml(topUser.role)}) con ${topUser.views} ${topUser.views === 1 ? "vista" : "vistas"} y ${escapeHtml(formatMinutes(topUser.watchTimeSeconds))}.</p>`
+              : `<p class="empty">Este contenido todavia no tiene visualizaciones en el periodo seleccionado.</p>`
+          }
+        </div>
+
+        <div class="panel">
+          <h2>Detalle por usuario</h2>
+          <h3>Vistas, tiempo y ultima actividad por persona</h3>
+          ${buildContentUserTableHtml(userRows)}
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+const buildContentUserTableHtml = (userRows) => {
+  if (userRows.length === 0) {
+    return `<p class="empty">No hay usuarios con actividad registrada para este contenido.</p>`;
+  }
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th><th>Rol</th><th class="right">Vistas</th>
+          <th class="right">Tiempo</th><th>Ultima actividad</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${userRows
+          .map(
+            (user) => `
+              <tr>
+                <td>${escapeHtml(user.name)}</td>
+                <td>${escapeHtml(user.role)}</td>
+                <td class="right">${user.views}</td>
+                <td class="right">${escapeHtml(formatMinutes(user.watchTimeSeconds))}</td>
+                <td>${escapeHtml(formatDate(user.lastViewAt))}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
   `;
 };
 

@@ -1,8 +1,10 @@
 package com.unad.project_video_platform.repository;
 
+import com.unad.project_video_platform.dto.ContentViewSummary;
 import com.unad.project_video_platform.entity.VideoStats;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -52,4 +54,8 @@ public interface VideoStatsRepository extends JpaRepository<VideoStats, Integer>
     List<VideoStats> findByUserId(Integer userId);
 
     void deleteByContentId(Integer contentId);
+
+    @Query("SELECT new com.unad.project_video_platform.dto.ContentViewSummary(s.content.id, SUM(s.totalViews)) "
+            + "FROM VideoStats s GROUP BY s.content.id")
+    List<ContentViewSummary> sumViewsGroupedByContent();
 }
