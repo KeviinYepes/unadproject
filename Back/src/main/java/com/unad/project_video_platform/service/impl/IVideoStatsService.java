@@ -1,5 +1,6 @@
 package com.unad.project_video_platform.service.impl;
 
+import com.unad.project_video_platform.dto.ContentViewSummary;
 import com.unad.project_video_platform.dto.VideoStatsRequest;
 import com.unad.project_video_platform.entity.VideoStats;
 
@@ -13,4 +14,6 @@ public interface IVideoStatsService {
     List<VideoStats> getStatsByContent(Integer contentId);
 
     List<VideoStats> getStatsByUser(Integer userId);
+
+    List<ContentViewSummary> getViewsByContent();
 }

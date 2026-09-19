@@ -1,6 +1,7 @@
 package com.unad.project_video_platform.controller;
 
 import com.unad.project_video_platform.dto.ApiResponse;
+import com.unad.project_video_platform.dto.ContentViewSummary;
 import com.unad.project_video_platform.dto.VideoStatsRequest;
 import com.unad.project_video_platform.entity.VideoStats;
 import com.unad.project_video_platform.service.impl.IVideoStatsService;
@@ -41,6 +42,11 @@ public class VideoStatsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.<VideoStats>internalError(e.getMessage()));
         }
+    }
+
+    @GetMapping("/views-by-content")
+    public ResponseEntity<ApiResponse<List<ContentViewSummary>>> getViewsByContent() {
+        return ResponseEntity.ok(ApiResponse.ok("Content view totals consulted", videoStatsService.getViewsByContent()));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

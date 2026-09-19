@@ -1,5 +1,6 @@
 package com.unad.project_video_platform.service;
 
+import com.unad.project_video_platform.dto.ContentViewSummary;
 import com.unad.project_video_platform.dto.VideoStatsRequest;
 import com.unad.project_video_platform.entity.User;
 import com.unad.project_video_platform.entity.Video;
@@ -89,5 +90,9 @@ public class VideoStatsService implements IVideoStatsService {
 
     public List<VideoStats> getStatsByUser(Integer userId) {
         return videoStatsRepository.findByUserId(userId);
+    }
+
+    public List<ContentViewSummary> getViewsByContent() {
+        return videoStatsRepository.sumViewsGroupedByContent();
     }
 }

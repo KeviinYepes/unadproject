@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -149,15 +148,17 @@ public class ForumService implements IForumService {
 
     private ForumConversationResponse toForumConversationResponse(Conversation conversation) {
         List<Question> questions = questionRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
-        List<Integer> participantIds = questions.stream()
+
+        java.util.Map<Integer, User> participantsById = new java.util.LinkedHashMap<>();
+        questions.stream()
                 .map(Question::getUser)
                 .filter(user -> user != null && user.getId() != null)
-                .map(User::getId)
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toCollection(LinkedHashSet::new),
-                        List::copyOf));
+                .forEach(user -> participantsById.putIfAbsent(user.getId(), user));
 
-        return new ForumConversationResponse(conversation, participantIds, questions.size());
+        List<Integer> participantIds = List.copyOf(participantsById.keySet());
+        List<User> participants = List.copyOf(participantsById.values());
+
+        return new ForumConversationResponse(conversation, participantIds, questions.size(), participants);
     }
 
     private NotificationItemResponse toNotificationItem(Conversation conversation, Question lastMessage, String type) {

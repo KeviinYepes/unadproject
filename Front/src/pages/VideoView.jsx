@@ -101,6 +101,21 @@ export default function VideoView() {
   };
 
   useEffect(() => {
+    const loadFullContent = async () => {
+      if (!tutorial.id) return;
+
+      try {
+        const fullContent = await VideoService.getById(tutorial.id);
+        setContent(fullContent);
+      } catch (error) {
+        console.error("Error cargando el detalle del contenido:", error);
+      }
+    };
+
+    loadFullContent();
+  }, [tutorial.id]);
+
+  useEffect(() => {
     const recordInitialView = async () => {
       if (!content.id || viewRecordedRef.current) return;
 

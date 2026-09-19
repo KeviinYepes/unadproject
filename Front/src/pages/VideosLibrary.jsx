@@ -9,6 +9,7 @@ import Pagination from "../components/Pagination";
 import AuthService from "../services/AuthService";
 import CategoryService from "../services/CategoryService";
 import VideoService from "../services/VideoService";
+import VideoStatsService from "../services/VideoStatsService";
 import {
   ACCEPTED_MATERIAL_TYPES,
   getFirstImageMaterialUrl,
@@ -28,6 +29,7 @@ export default function VideosLibrary() {
   const [durations, setDurations] = useState({});
   const [videos, setVideos] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
@@ -86,13 +88,15 @@ export default function VideosLibrary() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [contentData, categoryData] = await Promise.all([
+      const [contentData, categoryData, statsData] = await Promise.all([
         VideoService.getAll(),
         CategoryService.getAll(),
+        VideoStatsService.getViewsByContent(),
       ]);
 
       setVideos(Array.isArray(contentData) ? contentData : []);
       setCategories(Array.isArray(categoryData) ? categoryData : []);
+      setStats(Array.isArray(statsData) ? statsData : []);
       setError("");
     } catch (e) {
       console.error("Error cargando contenido:", e);
@@ -201,6 +205,14 @@ export default function VideosLibrary() {
     return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "";
   };
 
+  const viewsByContentId = useMemo(() => {
+    const map = new Map();
+    stats.forEach((stat) => {
+      map.set(Number(stat.contentId), Number(stat.totalViews || 0));
+    });
+    return map;
+  }, [stats]);
+
   const toCardItem = (video) => {
     const hasVideoUrl = Boolean(String(video.urlVideo || "").trim());
     const isMaterialOnly = !hasVideoUrl && (video.materials || []).length > 0;
@@ -221,6 +233,7 @@ export default function VideosLibrary() {
       description: video.description,
       materials: video.materials || [],
       createdAt: video.createdAt,
+      views: viewsByContentId.get(Number(video.id)) || 0,
     };
   };
 
@@ -255,6 +268,10 @@ export default function VideosLibrary() {
 
       if (sortBy === "category") {
         return String(a.category).localeCompare(String(b.category), "es", { sensitivity: "base" });
+      }
+
+      if (sortBy === "views") {
+        return (b.views || 0) - (a.views || 0);
       }
 
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
@@ -330,6 +347,7 @@ export default function VideosLibrary() {
                   className="h-9 appearance-none rounded-lg border border-slate-300 bg-white pl-4 pr-10 text-sm font-medium transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 >
                   <option value="recent">Ordenar por: Recientes</option>
+                  <option value="views">Ordenar por: Mas vistos</option>
                   <option value="title">Ordenar por: Titulo</option>
                   <option value="category">Ordenar por: Categoria</option>
                 </select>
@@ -384,7 +402,7 @@ export default function VideosLibrary() {
                       key={tutorial.id ?? index}
                       to="/video"
                       state={tutorial}
-                      className="group block transition-transform duration-300 hover:scale-[1.03]"
+                      className="group block w-full max-w-[340px] justify-self-center transition-transform duration-300 hover:scale-[1.03]"
                     >
                       <VideoCard
                         title={tutorial.title}
