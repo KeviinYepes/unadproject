@@ -22,7 +22,6 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("resumen");
   const [periodPreset, setPeriodPreset] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -125,17 +124,6 @@ const AdminDashboard = () => {
   }, [scopedStats, selectedContentId]);
 
   const isUserFiltered = filterType === "user" && Boolean(filterValue);
-  const visibleTabs = [
-    ["resumen", "Resumen"],
-    ["historico", "Historico"],
-    ...(isUserFiltered ? [] : [["usuarios", "Usuarios"]]),
-  ];
-
-  useEffect(() => {
-    if (isUserFiltered && activeTab === "usuarios") {
-      setActiveTab("resumen");
-    }
-  }, [isUserFiltered, activeTab]);
 
   useEffect(() => {
     setCurrentPage((page) => clampPage(page, analytics.videoRows.length, PAGE_SIZE));
@@ -349,31 +337,10 @@ const AdminDashboard = () => {
               />
             </div>
 
-            <div className="flex flex-wrap gap-2 border-b border-border-light dark:border-border-dark">
-              {visibleTabs.map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveTab(key)}
-                  className={`border-b-2 px-4 py-3 text-sm font-bold transition ${
-                    activeTab === key
-                      ? "border-primary text-primary"
-                      : "border-transparent text-text-secondary-light hover:text-primary dark:text-text-secondary-dark"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
             {loading ? (
               <div className="rounded-xl border border-border-light bg-card-light p-10 text-center text-text-secondary-light shadow-sm dark:border-border-dark dark:bg-card-dark dark:text-text-secondary-dark">
                 Cargando metricas...
               </div>
-            ) : activeTab === "historico" ? (
-              <HistoricalView analytics={analytics} />
-            ) : activeTab === "usuarios" ? (
-              <UsersAnalyticsView analytics={analytics} />
             ) : (
               <SummaryView
                 analytics={analytics}
@@ -383,6 +350,7 @@ const AdminDashboard = () => {
                   setCurrentPage(clampPage(page, analytics.videoRows.length, PAGE_SIZE))
                 }
                 onSelectContent={(row) => setSelectedContentId(row.id)}
+                isUserFiltered={isUserFiltered}
               />
             )}
           </div>
@@ -401,7 +369,7 @@ const AdminDashboard = () => {
   );
 };
 
-const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange, onSelectContent }) => (
+const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange, onSelectContent, isUserFiltered }) => (
   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <section className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -438,117 +406,47 @@ const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange,
         </div>
       </Panel>
 
-      <Panel title="Top usuarios" subtitle="Personas con mayor actividad">
-        <div className="flex flex-col gap-3">
-          {analytics.userRows.slice(0, 5).length === 0 ? (
-            <EmptyState text="No hay actividad de usuarios en este periodo." />
-          ) : (
-            analytics.userRows.slice(0, 5).map((user, index) => (
-              <RankItem
-                key={user.id}
-                index={index}
-                title={user.name}
-                detail={`${user.views} vistas | ${formatMinutes(user.watchTimeSeconds)}`}
-              />
-            ))
-          )}
-        </div>
-      </Panel>
-    </aside>
-  </div>
-);
+      {!isUserFiltered && (
+        <>
+          <Panel title="Top usuarios" subtitle="Personas con mayor actividad">
+            <div className="flex flex-col gap-3">
+              {analytics.userRows.slice(0, 5).length === 0 ? (
+                <EmptyState text="No hay actividad de usuarios en este periodo." />
+              ) : (
+                analytics.userRows.slice(0, 5).map((user, index) => (
+                  <RankItem
+                    key={user.id}
+                    index={index}
+                    title={user.name}
+                    detail={`${user.views} vistas | ${formatMinutes(user.watchTimeSeconds)}`}
+                  />
+                ))
+              )}
+            </div>
+          </Panel>
 
-const HistoricalView = ({ analytics }) => (
-  <div className="grid gap-6 lg:grid-cols-2">
-    <Panel title="Historico de visualizaciones" subtitle="Evolucion mensual de vistas y usuarios">
-      <TrendChart data={analytics.trendRows} showViewers />
-    </Panel>
+          <Panel title="Cobertura de usuarios" subtitle="Relacion entre usuarios y consumo">
+            <CoverageMeter value={analytics.metrics.viewerCoverage} />
+          </Panel>
 
-    <Panel title="Tiempo de consumo" subtitle="Horas vistas por mes">
-      <VerticalBarChart
-        data={analytics.trendRows}
-        valueKey="watchTimeSeconds"
-        labelFormatter={(row) => row.shortLabel}
-        valueFormatter={(value) => formatHours(value)}
-        emptyText="No hay tiempo de reproduccion registrado."
-      />
-    </Panel>
-
-    <Panel title="Ranking historico por categoria" subtitle="Categorias que concentran el consumo">
-      <HorizontalBarChart
-        data={analytics.categoryRows}
-        valueKey="watchTimeSeconds"
-        labelKey="category"
-        valueFormatter={formatHours}
-        emptyText="No hay consumo por categoria."
-      />
-    </Panel>
-
-    <Panel title="Contenidos por estado" subtitle="Oportunidades de mantenimiento">
-      <StatusBreakdown metrics={analytics.metrics} />
-    </Panel>
-  </div>
-);
-
-const UsersAnalyticsView = ({ analytics }) => (
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-    <Panel title="Actividad por usuario" subtitle="Quien consume contenido y cuanto tiempo invierte">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="bg-surface-light text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:bg-surface-dark dark:text-text-secondary-dark">
-            <tr>
-              <th className="px-5 py-3">Usuario</th>
-              <th className="px-5 py-3">Rol</th>
-              <th className="px-5 py-3 text-right">Vistas</th>
-              <th className="px-5 py-3 text-right">Contenidos</th>
-              <th className="px-5 py-3 text-right">Tiempo</th>
-              <th className="px-5 py-3">Ultima actividad</th>
-            </tr>
-          </thead>
-          <tbody>
-            {analytics.userRows.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="px-5 py-10 text-center text-text-secondary-light dark:text-text-secondary-dark">
-                  No hay usuarios con actividad en este periodo.
-                </td>
-              </tr>
-            ) : (
-              analytics.userRows.map((row) => (
-                <tr key={row.id} className="border-b border-border-light last:border-b-0 dark:border-border-dark">
-                  <td className="px-5 py-4 font-semibold">{row.name}</td>
-                  <td className="px-5 py-4">{row.role}</td>
-                  <td className="px-5 py-4 text-right font-bold">{row.views}</td>
-                  <td className="px-5 py-4 text-right">{row.contentCount}</td>
-                  <td className="px-5 py-4 text-right">{formatMinutes(row.watchTimeSeconds)}</td>
-                  <td className="px-5 py-4">{formatDate(row.lastViewAt)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
-
-    <aside className="flex flex-col gap-6">
-      <Panel title="Cobertura de usuarios" subtitle="Relacion entre usuarios y consumo">
-        <CoverageMeter value={analytics.metrics.viewerCoverage} />
-      </Panel>
-      <Panel title="Usuarios sin actividad" subtitle="Candidatos para acompanamiento">
-        <div className="flex flex-col gap-3">
-          {analytics.inactiveUsers.slice(0, 8).length === 0 ? (
-            <EmptyState text="Todos los usuarios han tenido actividad registrada." />
-          ) : (
-            analytics.inactiveUsers.slice(0, 8).map((user) => (
-              <div key={user.id} className="rounded-lg border border-border-light p-3 dark:border-border-dark">
-                <p className="font-semibold">{getUserName(user)}</p>
-                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                  {normalizeRole(user.role?.roleName)}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </Panel>
+          <Panel title="Usuarios sin actividad" subtitle="Candidatos para acompanamiento">
+            <div className="flex flex-col gap-3">
+              {analytics.inactiveUsers.slice(0, 8).length === 0 ? (
+                <EmptyState text="Todos los usuarios han tenido actividad registrada." />
+              ) : (
+                analytics.inactiveUsers.slice(0, 8).map((user) => (
+                  <div key={user.id} className="rounded-lg border border-border-light p-3 dark:border-border-dark">
+                    <p className="font-semibold">{getUserName(user)}</p>
+                    <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                      {normalizeRole(user.role?.roleName)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Panel>
+        </>
+      )}
     </aside>
   </div>
 );
@@ -832,63 +730,6 @@ const HorizontalBarChart = ({
           </div>
         );
       })}
-    </div>
-  );
-};
-
-const VerticalBarChart = ({
-  data,
-  valueKey,
-  labelFormatter,
-  valueFormatter,
-  emptyText,
-}) => {
-  const max = Math.max(...data.map((row) => Number(row[valueKey] || 0)), 1);
-
-  if (data.length === 0) {
-    return <EmptyState text={emptyText} />;
-  }
-
-  return (
-    <div className="flex h-72 items-end gap-3 overflow-x-auto pb-2">
-      {data.map((row) => {
-        const value = Number(row[valueKey] || 0);
-        const height = Math.max(8, (value / max) * 210);
-
-        return (
-          <div key={row.key} className="flex min-w-16 flex-1 flex-col items-center justify-end gap-2">
-            <div
-              className="w-8 rounded-t bg-primary"
-              style={{ height: `${height}px` }}
-              title={valueFormatter(value)}
-            />
-            <p className="text-xs font-bold text-text-secondary-light dark:text-text-secondary-dark">
-              {labelFormatter(row)}
-            </p>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-const StatusBreakdown = ({ metrics }) => {
-  const items = [
-    ["Alto", metrics.highUseContent],
-    ["Medio", metrics.mediumUseContent],
-    ["Bajo", metrics.lowUseContent],
-    ["Sin uso", metrics.contentWithoutViews],
-  ];
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {items.map(([status, value]) => (
-        <div key={status} className="rounded-lg border border-border-light p-4 dark:border-border-dark">
-          <StatusPill status={status} />
-          <p className="mt-3 text-3xl font-bold">{value}</p>
-          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">contenidos</p>
-        </div>
-      ))}
     </div>
   );
 };

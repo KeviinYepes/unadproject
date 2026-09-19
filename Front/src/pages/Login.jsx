@@ -125,10 +125,10 @@ export default function Login() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-[#101922] dark:text-white">
-                      Hola de nuevo
+                      Acceso a CORPFORMS
                     </h1>
                     <p className="text-base font-normal text-slate-600 dark:text-slate-400">
-                      Ingresa para continuar aprendiendo y completar tus formularios con exito.
+                      Ingresa para continuar aprendiendo y completar tus procesos con exito.
                     </p>
                   </div>
                 </div>
