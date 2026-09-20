@@ -1,63 +1,235 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 🔹 Clases reutilizables */
+/* ==========================================================================
+   Tokens de diseno
+
+   Paleta estandar y sobria: azul institucional, neutros frios y semanticos
+   clasicos. Los canales van separados por espacio para que Tailwind pueda
+   aplicarles opacidad (`bg-brand/10`).
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --c-canvas: 245 247 250;
+  --c-surface: 255 255 255;
+  --c-elevated: 255 255 255;
+  --c-subtle: 238 242 247;
+
+  --c-line: 226 232 240;
+  --c-line-strong: 203 213 225;
+
+  --c-fg: 15 23 42;
+  --c-fg-muted: 82 99 122;
+  --c-fg-subtle: 124 140 161;
+
+  --c-brand: 37 99 235;
+  --c-brand-hover: 29 78 216;
+  --c-brand-fg: 255 255 255;
+  --c-brand-soft: 232 240 254;
+  --c-brand-ink: 29 78 216;
+
+  --c-success: 11 122 83;
+  --c-success-soft: 230 246 239;
+  --c-success-fg: 255 255 255;
+  --c-warning: 154 91 0;
+  --c-warning-soft: 253 243 227;
+  --c-warning-fg: 255 255 255;
+  --c-danger: 180 35 24;
+  --c-danger-soft: 253 236 234;
+  --c-danger-fg: 255 255 255;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-pop: 0 12px 32px -12px rgb(15 23 42 / 0.22), 0 2px 8px -2px rgb(15 23 42 / 0.08);
+
+  --hover: 15 23 42;
+  --ring: 37 99 235;
+  --c-scrim: 15 23 42;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --c-canvas: 10 17 32;
+  --c-surface: 17 27 45;
+  --c-elevated: 22 34 58;
+  --c-subtle: 27 40 66;
+
+  --c-line: 34 48 75;
+  --c-line-strong: 49 65 95;
+
+  --c-fg: 232 238 248;
+  --c-fg-muted: 159 176 199;
+  --c-fg-subtle: 122 139 163;
+
+  --c-brand: 37 99 235;
+  --c-brand-hover: 59 130 246;
+  --c-brand-fg: 255 255 255;
+  --c-brand-soft: 24 40 71;
+  --c-brand-ink: 125 180 255;
+
+  /* En oscuro los semanticos se aclaran para leerse sobre fondo oscuro, asi
+     que el color que va encima de ellos pasa a ser oscuro. */
+  --c-success: 74 222 128;
+  --c-success-soft: 16 40 31;
+  --c-success-fg: 8 32 23;
+  --c-warning: 251 191 36;
+  --c-warning-soft: 46 36 16;
+  --c-warning-fg: 46 36 16;
+  --c-danger: 248 113 113;
+  --c-danger-soft: 45 21 23;
+  --c-danger-fg: 45 21 23;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow-pop: 0 16px 40px -14px rgb(0 0 0 / 0.7), 0 2px 8px -2px rgb(0 0 0 / 0.45);
+
+  --hover: 255 255 255;
+  --ring: 125 180 255;
+  --c-scrim: 3 7 18;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-fg antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight;
+  }
+
+  /* Un solo anillo de foco para toda la aplicacion. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring) / 0.7);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--c-brand) / 0.22);
+  }
+
+  /* Scrollbars discretas y coherentes con el tema. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--c-line-strong)) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--c-line-strong));
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--c-fg-subtle));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ==========================================================================
+   Componentes reutilizables
+   ========================================================================== */
+
 @layer components {
-  @layer components {
   .card {
-    @apply bg-card-light dark:bg-card-dark rounded-2xl shadow-sm 
-    border border-border-light dark:border-border-dark;
+    @apply rounded-xl border border-line bg-surface shadow-card;
   }
 
-  .section-title {
-    @apply text-2xl font-bold text-text-primary-light dark:text-text-primary-dark;
+  .divider {
+    @apply h-px w-full bg-line;
   }
 
-  .section-subtitle {
-    @apply text-sm text-text-secondary-light dark:text-text-secondary-dark;
+  /* Las tablas comparten un unico lugar donde se define densidad, hover y
+     separadores, en vez de repetir clases en cada fila. */
+  .data-table {
+    @apply w-full border-collapse text-left text-sm;
   }
 
-  .input {
-    @apply w-full px-4 py-2 rounded-xl border border-border-light dark:border-border-dark 
-    bg-surface-light dark:bg-surface-dark 
-    text-text-primary-light dark:text-text-primary-dark
-    focus:outline-none focus:ring-2 focus:ring-primary;
+  .data-table thead th {
+    @apply whitespace-nowrap border-b border-line bg-subtle/70 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-fg-muted;
   }
 
-  .btn-primary {
-    @apply bg-primary text-white px-5 py-2 rounded-xl 
-    hover:opacity-90 transition;
+  .data-table tbody td {
+    @apply border-b border-line px-5 py-4 align-middle text-fg;
   }
 
-  .btn-secondary {
-    @apply bg-gray-200 dark:bg-gray-700 
-    text-text-primary-light dark:text-text-primary-dark 
-    px-5 py-2 rounded-xl hover:opacity-80 transition;
+  .data-table tbody tr {
+    @apply transition-colors;
   }
 
-  .table-header {
-    @apply text-left text-sm uppercase tracking-wider 
-    text-text-secondary-light dark:text-text-secondary-dark;
+  .data-table tbody tr:hover {
+    background-color: rgb(var(--hover) / 0.035);
   }
 
-  .table-row {
-    @apply border-b border-border-light dark:border-border-dark 
-    hover:bg-background-light dark:hover:bg-background-dark transition;
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
   }
-}
-}
 
-body {
-  font-family: 'Manrope', sans-serif;
+  /* Skeleton con brillo sutil en lugar de un spinner que salta. */
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-subtle;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background-image: linear-gradient(90deg, transparent, rgb(var(--c-fg) / 0.07), transparent);
+  }
+
+  .table-scroll {
+    @apply -mx-px overflow-x-auto;
+  }
 }
 
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-feature-settings: "liga";
+  user-select: none;
+  line-height: 1;
 }
 
 .material-symbols-outlined.fill {
-  font-variation-settings: 'FILL' 1;
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

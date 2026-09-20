@@ -1,43 +1,44 @@
+import Icon from "./ui/Icon";
+
+const TONES = {
+  success: { icon: "check_circle", title: "Listo", box: "bg-success-soft text-success" },
+  error: { icon: "error", title: "Algo salió mal", box: "bg-danger-soft text-danger" },
+  info: { icon: "info", title: "Información", box: "bg-brand-soft text-brand-ink" },
+};
+
+/**
+ * Aviso flotante.
+ * Conserva la misma interfaz que antes (`message`, `type`, `onClose`) para no
+ * tocar las pantallas que ya lo usaban.
+ */
 export default function Toast({ message, type = "success", onClose }) {
   if (!message) return null;
 
-  const styles = {
-    success: {
-      icon: "check_circle",
-      title: "Operacion exitosa",
-      container: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/90 dark:text-emerald-100",
-      iconBox: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200",
-    },
-    error: {
-      icon: "error",
-      title: "Algo salio mal",
-      container: "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/90 dark:text-red-100",
-      iconBox: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
-    },
-  };
-
-  const current = styles[type] || styles.success;
+  const tone = TONES[type] || TONES.success;
 
   return (
-    <div className="fixed right-6 top-6 z-[70] w-[min(420px,calc(100vw-2rem))]">
-      <div
-        className={`flex items-start gap-3 rounded-lg border p-4 shadow-lg backdrop-blur ${current.container}`}
-        role="status"
-      >
-        <span className={`material-symbols-outlined rounded-lg p-2 text-xl ${current.iconBox}`}>
-          {current.icon}
+    <div
+      className="no-print pointer-events-none fixed inset-x-4 top-4 z-[70] flex justify-center sm:inset-x-auto sm:right-6 sm:top-6 sm:justify-end"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="pointer-events-auto flex w-full max-w-[420px] animate-slide-in-right items-start gap-3 rounded-xl border border-line bg-elevated p-4 shadow-pop">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone.box}`}>
+          <Icon name={tone.icon} size={20} />
         </span>
+
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">{current.title}</p>
-          <p className="mt-1 text-sm leading-5">{message}</p>
+          <p className="text-sm font-bold text-fg">{tone.title}</p>
+          <p className="mt-0.5 text-sm leading-5 text-fg-muted">{message}</p>
         </div>
+
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition hover:bg-black/10 dark:hover:bg-white/10"
           aria-label="Cerrar mensaje"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-subtle hover:text-fg"
         >
-          <span className="material-symbols-outlined text-lg">close</span>
+          <Icon name="close" size={18} />
         </button>
       </div>
     </div>

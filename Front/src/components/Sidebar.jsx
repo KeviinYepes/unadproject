@@ -1,66 +1,187 @@
-import { NavLink } from 'react-router-dom';
-import AuthService from '../services/AuthService';
+import { Link, useLocation } from "react-router-dom";
+import AuthService from "../services/AuthService";
+import { getNavigationForRole } from "../config/navigation";
+import { normalizeRole, roleLabel, roleTone } from "../utils/role";
+import { Avatar, Badge, Icon } from "./ui";
 
-export default function Sidebar() {
+/**
+ * Barra lateral.
+ *
+ * - Agrupa la navegacion (Aprendizaje / Administracion) en vez de una lista
+ *   plana, para que se entienda que hace cada pantalla.
+ * - Se contrae a una barra de iconos en escritorio y se convierte en un panel
+ *   deslizante en movil, donde antes simplemente estorbaba.
+ * - Cierra con la tarjeta del usuario: identidad visible y salida de sesion a
+ *   un clic.
+ */
+export default function Sidebar({
+  collapsed = false,
+  onToggleCollapsed,
+  mobileOpen = false,
+  onCloseMobile,
+  onLogout,
+}) {
+  const { pathname } = useLocation();
   const currentUser = AuthService.getCurrentUser();
   const currentRole = normalizeRole(currentUser?.role);
-  
-  const navItems = [
-    { path: '/admin/dashboard', icon: 'dashboard', label: 'Panel Admin', roles: ['ADMIN'] },
-    { path: '/admin/users', icon: 'group', label: 'Usuarios', roles: ['ADMIN'] },
-    { path: '/admin/roles', icon: 'admin_panel_settings', label: 'Roles', roles: ['ADMIN'] },
-    { path: '/admin/categories', icon: 'category', label: 'Categorias', roles: ['ADMIN'] },
-    { path: '/admin/biblioteca', icon: 'library_books', label: 'Biblioteca', roles: ['ADMIN', 'USER', 'MODERATOR'] },
-    { path: '/foro', icon: 'forum', label: 'Foro', roles: ['ADMIN', 'USER', 'MODERATOR'] },
-  ].filter((item) => item.roles.includes(currentRole));
+  const groups = getNavigationForRole(currentRole);
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border-light bg-card-light p-4 dark:border-border-dark dark:bg-card-dark">
-      <div className="flex flex-col gap-4">
-        {/* Logo y nombre */}
-        <div className="flex items-center gap-3 px-2 py-4">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-white">
-            <span className="material-symbols-outlined text-2xl">all_inclusive</span>
-          </div>
-          <h1 className="text-base font-bold leading-normal text-text-light-primary dark:text-text-dark-primary">
-            Guia Corp Forms
-          </h1>
+    <>
+      {/* Velo del panel movil */}
+      <button
+        type="button"
+        aria-label="Cerrar navegación"
+        tabIndex={mobileOpen ? 0 : -1}
+        onClick={onCloseMobile}
+        className={`fixed inset-0 z-40 bg-scrim/55 transition-opacity duration-200 lg:hidden ${
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      <aside
+        aria-label="Navegación principal"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-line bg-surface transition-[transform,width] duration-200 ease-out lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:translate-x-0 ${
+          collapsed ? "lg:w-[76px]" : "lg:w-[272px]"
+        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        {/* Marca */}
+        <div
+          className={`flex h-16 shrink-0 items-center gap-2 border-b border-line px-4 ${
+            collapsed ? "lg:justify-center lg:px-0" : ""
+          }`}
+        >
+          <Link
+            to="/main"
+            onClick={onCloseMobile}
+            className="flex min-w-0 items-center gap-3"
+            title="Guías Visuales UNAD"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-fg">
+              <Icon name="play_circle" size={22} filled />
+            </span>
+            <span className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+              <span className="block truncate text-sm font-extrabold leading-tight text-fg">
+                Guías Visuales
+              </span>
+              <span className="block truncate text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
+                UNAD
+              </span>
+            </span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+            title={collapsed ? "Expandir menú" : "Contraer menú"}
+            className={`ml-auto hidden size-8 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-subtle hover:text-fg lg:flex ${
+              collapsed ? "lg:hidden" : ""
+            }`}
+          >
+            <Icon name="left_panel_close" size={18} />
+          </button>
         </div>
 
-        {/* Navegación principal */}
-        <nav className="flex flex-col gap-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-                  isActive
-                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-300'
-                    : 'text-text-light-secondary hover:bg-primary/10 hover:text-primary dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span
-                    className="material-symbols-outlined text-2xl"
-                    style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
-                  >
-                    {item.icon}
-                  </span>
-                  <p className="text-sm font-medium leading-normal">{item.label}</p>
-                </>
-              )}
-            </NavLink>
+        {/* Navegacion */}
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          {groups.map((group, groupIndex) => (
+            <div key={group.id} className={groupIndex > 0 ? "mt-6" : ""}>
+              <p
+                className={`px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-fg-subtle ${
+                  collapsed ? "lg:hidden" : ""
+                }`}
+              >
+                {group.label}
+              </p>
+
+              <ul className="flex flex-col gap-1">
+                {group.items.map((item) => {
+                  const allPaths = [item.to, ...(item.matches || [])];
+                  const active = allPaths.some(
+                    (path) => pathname === path || pathname.startsWith(`${path}/`)
+                  );
+
+                  return (
+                    <li key={item.to}>
+                      <NavigationLink
+                        item={item}
+                        active={active}
+                        collapsed={collapsed}
+                        onNavigate={onCloseMobile}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           ))}
         </nav>
-      </div>
-    </aside>
+
+        {/* Usuario en sesion */}
+        <div className="shrink-0 border-t border-line p-3">
+          <div
+            className={`flex items-center gap-3 rounded-lg bg-subtle/70 p-3 ${
+              collapsed ? "lg:flex-col lg:gap-2 lg:bg-transparent lg:p-0" : ""
+            }`}
+          >
+            <Avatar name={currentUser?.email || "Usuario"} size="sm" />
+
+            <div className={`min-w-0 flex-1 ${collapsed ? "lg:hidden" : ""}`}>
+              <p className="truncate text-xs font-bold text-fg" title={currentUser?.email}>
+                {currentUser?.email || "Sesión activa"}
+              </p>
+              <Badge tone={roleTone(currentRole)} size="sm" className="mt-1">
+                {roleLabel(currentRole)}
+              </Badge>
+            </div>
+
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-danger-soft hover:text-danger"
+            >
+              <Icon name="logout" size={18} />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
 
-const normalizeRole = (role) =>
-  String(role || "USER")
-    .replace(/^ROLE_/i, "")
-    .toUpperCase();
+/**
+ * Enlace de navegacion.
+ * El estado activo se resuelve con `useLocation` en vez de `NavLink` porque una
+ * entrada puede corresponder a varias rutas (la biblioteca sigue activa
+ * mientras se esta viendo un video).
+ */
+function NavigationLink({ item, active, collapsed, onNavigate }) {
+  return (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      aria-current={active ? "page" : undefined}
+      className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+        collapsed ? "lg:justify-center lg:px-0" : ""
+      } ${
+        active
+          ? "bg-brand-soft font-bold text-brand-ink"
+          : "font-medium text-fg-muted hover:bg-subtle hover:text-fg"
+      }`}
+    >
+      {/* Marca de seleccion: barra + color, no solo color */}
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-brand transition-opacity ${
+          active ? "opacity-100" : "opacity-0"
+        } ${collapsed ? "lg:hidden" : ""}`}
+      />
+      <Icon name={item.icon} size={20} filled={active} />
+      <span className={`min-w-0 flex-1 truncate ${collapsed ? "lg:hidden" : ""}`}>{item.label}</span>
+    </Link>
+  );
+}
