@@ -319,7 +319,7 @@ const AdminDashboard = () => {
           <Stat
             icon="schedule"
             tone="success"
-            label="Tiempo visto"
+            label="Tiempo de video"
             value={formatHours(analytics.metrics.watchTimeSeconds)}
             footer={`${analytics.metrics.avgMinutesPerView} min por vista`}
           />
@@ -566,7 +566,7 @@ const ContentDetailModal = ({ row, userRows, onClose, onExport }) => (
     <div className="grid gap-3 sm:grid-cols-4">
       <DetailStat label="Vistas" value={formatNumber(row.views)} />
       <DetailStat label="Usuarios únicos" value={row.uniqueUsers} />
-      <DetailStat label="Tiempo visto" value={formatMinutes(row.watchTimeSeconds)} />
+      <DetailStat label="Tiempo de video" value={formatMinutes(row.watchTimeSeconds)} />
       <DetailStat label="Estado" value={<Badge tone={statusTone(row.status)}>{row.status}</Badge>} />
     </div>
 
@@ -1155,7 +1155,7 @@ const buildPdfReportHtml = (analytics, periodLabel, filterLabel) => {
             <div class="metric-detail">${metrics.uniqueViewers} usuarios unicos</div>
           </div>
           <div class="metric">
-            <div class="metric-label">Tiempo visto</div>
+            <div class="metric-label">Tiempo de video</div>
             <div class="metric-value">${escapeHtml(formatHours(metrics.watchTimeSeconds))}</div>
             <div class="metric-detail">${metrics.avgMinutesPerView} min por vista</div>
           </div>
@@ -1242,7 +1242,7 @@ const buildContentPdfReportHtml = (row, userRows, periodLabel, filterLabel) => {
             <div class="metric-value">${row.uniqueUsers}</div>
           </div>
           <div class="metric">
-            <div class="metric-label">Tiempo visto</div>
+            <div class="metric-label">Tiempo de video</div>
             <div class="metric-value">${escapeHtml(formatMinutes(row.watchTimeSeconds))}</div>
           </div>
           <div class="metric">

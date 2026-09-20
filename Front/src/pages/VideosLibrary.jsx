@@ -352,6 +352,7 @@ export default function VideosLibrary() {
                     description={tutorial.description}
                     isMaterialOnly={tutorial.isMaterialOnly}
                     materials={tutorial.materials}
+                    views={tutorial.views}
                   />
                   <div className="mt-2 flex items-center gap-1 text-sm font-bold text-brand-ink opacity-0 transition-opacity group-hover:opacity-100">
                     <Icon

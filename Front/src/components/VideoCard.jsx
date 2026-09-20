@@ -21,6 +21,7 @@ export default function VideoCard({
   description,
   isMaterialOnly = false,
   materials = [],
+  views,
 }) {
   const primaryFormat = getPrimaryMaterialFormat(materials);
   const actionIcon = isMaterialOnly ? primaryFormat.icon : "play_arrow";
@@ -62,6 +63,13 @@ export default function VideoCard({
         <p className="text-[11px] font-bold uppercase tracking-wide text-brand-ink">{category}</p>
 
         <h3 className="mt-1.5 line-clamp-2 text-sm font-bold leading-5 text-fg">{title}</h3>
+
+        {typeof views === "number" && (
+          <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-fg-subtle">
+            <Icon name="visibility" size={13} />
+            {views === 1 ? "1 visita" : `${views} visitas`}
+          </span>
+        )}
 
         {description && (
           <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-fg-muted">{description}</p>
