@@ -1,27 +1,51 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
-import VideoCard from "../components/VideoCard";
-import Toast from "../components/Toast";
 import CategoryTreeFilter from "../components/CategoryTreeFilter";
 import Pagination from "../components/Pagination";
+import Toast from "../components/Toast";
+import VideoCard from "../components/VideoCard";
+import {
+  Alert,
+  Button,
+  CardSkeleton,
+  EmptyState,
+  Icon,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  Textarea,
+} from "../components/ui";
 import AuthService from "../services/AuthService";
 import CategoryService from "../services/CategoryService";
 import VideoService from "../services/VideoService";
 import VideoStatsService from "../services/VideoStatsService";
+import { toContentState } from "../utils/content";
+import { formatDuration } from "../utils/format";
 import {
   ACCEPTED_MATERIAL_TYPES,
   getFirstImageMaterialUrl,
   getMaterialFormat,
   getMaterialFormatsSummary,
 } from "../utils/materialFormats";
+import { normalizeRole } from "../utils/role";
+import { getYouTubeDuration, getYouTubeVideoId } from "../utils/youtube";
 
 const PAGE_SIZE = 12;
+
+const emptyForm = { title: "", categoryId: "", description: "", urlVideo: "", materials: [] };
+
+const normalizeText = (value) =>
+  String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim();
 
 export default function VideosLibrary() {
   const currentUser = AuthService.getCurrentUser();
   const canManageContent = ["ADMIN", "MODERATOR"].includes(normalizeRole(currentUser?.role));
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sortBy, setSortBy] = useState("recent");
@@ -34,13 +58,7 @@ export default function VideosLibrary() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    categoryId: "",
-    description: "",
-    urlVideo: "",
-    materials: [],
-  });
+  const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
     cargarDatos();
@@ -70,10 +88,7 @@ export default function VideosLibrary() {
       if (entries.length === 0) return;
 
       const results = await Promise.all(
-        entries.map(async ({ key, videoId }) => {
-          const seconds = await getYouTubeDuration(videoId);
-          return [key, formatDuration(seconds)];
-        })
+        entries.map(async ({ key, videoId }) => [key, formatDuration(await getYouTubeDuration(videoId))])
       );
 
       setDurations((prev) => ({
@@ -113,14 +128,14 @@ export default function VideosLibrary() {
   };
 
   const handleOpenCreate = () => {
-    setForm({ title: "", categoryId: "", description: "", urlVideo: "", materials: [] });
+    setForm(emptyForm);
     setError("");
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setForm({ title: "", categoryId: "", description: "", urlVideo: "", materials: [] });
+    setForm(emptyForm);
   };
 
   const handleChange = (e) => {
@@ -143,9 +158,9 @@ export default function VideosLibrary() {
         throw new Error("Agrega una URL de video o al menos un material de apoyo.");
       }
 
-      const currentUser = AuthService.getCurrentUser();
-      if (!currentUser?.userId) {
-        throw new Error("No se encontro el usuario actual. Vuelve a iniciar sesion.");
+      const user = AuthService.getCurrentUser();
+      if (!user?.userId) {
+        throw new Error("No se encontró el usuario actual. Vuelve a iniciar sesión.");
       }
 
       await VideoService.create({
@@ -153,7 +168,7 @@ export default function VideosLibrary() {
         urlVideo: form.urlVideo,
         categoryId: form.categoryId,
         description: form.description || null,
-        createdById: currentUser.userId,
+        createdById: user.userId,
         materials: form.materials,
       });
 
@@ -163,41 +178,12 @@ export default function VideosLibrary() {
     } catch (err) {
       console.error(err);
       const apiMessage = err.response?.data?.error || err.response?.data?.message;
-      const fallbackMessage = err.message || "Error al guardar el contenido";
-      const msg = apiMessage || fallbackMessage;
-      showToast("Error al guardar el contenido: " + msg, "error");
+      const message = apiMessage || err.message || "Error al guardar el contenido";
+      setError(message);
+      showToast(`Error al guardar el contenido: ${message}`, "error");
     } finally {
       setLoading(false);
     }
-  };
-
-  const getYouTubeVideoId = (url) => {
-    if (!url) return null;
-
-    try {
-      const parsedUrl = new URL(url);
-      const host = parsedUrl.hostname.replace(/^www\./, "");
-
-      if (host === "youtu.be") {
-        return parsedUrl.pathname.split("/").filter(Boolean)[0] || null;
-      }
-
-      if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
-        if (parsedUrl.pathname === "/watch") {
-          return parsedUrl.searchParams.get("v");
-        }
-
-        const parts = parsedUrl.pathname.split("/").filter(Boolean);
-        if (["embed", "shorts", "live"].includes(parts[0])) {
-          return parts[1] || null;
-        }
-      }
-    } catch {
-      const match = String(url).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([a-zA-Z0-9_-]{11})/);
-      return match?.[1] || null;
-    }
-
-    return null;
   };
 
   const getYouTubeThumbnail = (url) => {
@@ -220,44 +206,26 @@ export default function VideosLibrary() {
     const imageMaterialUrl = getFirstImageMaterialUrl(video.materials || []);
 
     return {
-      id: video.id,
-      title: video.title,
-      category: video.category?.categoryName || "Sin categoria",
-      createdBy: video.createdBy,
+      ...toContentState(video),
       duration: isMaterialOnly
         ? materialSummary || "Material"
         : [durations[video.id] || "...", materialSummary].filter(Boolean).join(" | "),
       imageUrl: imageMaterialUrl || getYouTubeThumbnail(video.urlVideo),
-      url: video.urlVideo,
       isMaterialOnly,
-      description: video.description,
-      materials: video.materials || [],
-      createdAt: video.createdAt,
       views: viewsByContentId.get(Number(video.id)) || 0,
     };
   };
 
-  const items = videos.map(toCardItem);
+  const items = useMemo(() => videos.map(toCardItem), [videos, durations, viewsByContentId]);
 
   const filteredTutorials = useMemo(() => {
-    const q = searchQuery
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-
-    const normalize = (value) =>
-      String(value ?? "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-    const selected = normalize(selectedCategory);
+    const q = normalizeText(searchQuery);
+    const selected = normalizeText(selectedCategory);
 
     const filtered = items.filter((tutorial) => {
-      const haystack = `${normalize(tutorial.title)} ${normalize(tutorial.category)}`;
+      const haystack = `${normalizeText(tutorial.title)} ${normalizeText(tutorial.category)}`;
       const matchesSearch = !q || haystack.includes(q);
-      const matchesCategory = !selected || normalize(tutorial.category) === selected;
+      const matchesCategory = !selected || normalizeText(tutorial.category) === selected;
       return matchesSearch && matchesCategory;
     });
 
@@ -288,418 +256,251 @@ export default function VideosLibrary() {
   );
 
   return (
-    <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
+    <div className="flex flex-col gap-6">
       <Toast message={toast?.message} type={toast?.type} onClose={() => setToast(null)} />
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <Header />
-        <main className="flex-1 p-8">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#101922] dark:text-white">
-                  Biblioteca de Guias Visuales
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Selecciona un formulario para ver el video instructivo y seguir los pasos.
-                </p>
-              </div>
 
-              {canManageContent && (
-                <button
-                  type="button"
-                  onClick={handleOpenCreate}
-                  disabled={loading}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-lg">add</span>
-                  Agregar contenido
-                </button>
-              )}
-            </div>
+      <PageHeader
+        eyebrow="Aprendizaje"
+        title="Biblioteca de guías visuales"
+        description="Selecciona un formulario para ver el video instructivo y seguir los pasos."
+        actions={
+          canManageContent && (
+            <Button icon="add" onClick={handleOpenCreate} disabled={loading}>
+              Agregar contenido
+            </Button>
+          )
+        }
+      />
 
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-                <p className="text-red-600 dark:text-red-400">{error}</p>
-              </div>
-            )}
+      {error && <Alert tone="danger">{error}</Alert>}
 
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <label className="relative flex w-full max-w-md">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <span className="material-symbols-outlined text-xl text-text-light-secondary dark:text-dark-secondary">
-                    search
-                  </span>
-                </div>
-                <input
-                  className="form-input h-10 w-full flex-1 rounded-lg border-none bg-background-light pl-10 text-sm placeholder:text-text-light-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-background-dark dark:placeholder:text-dark-secondary"
-                  placeholder="Buscar contenido..."
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </label>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full max-w-md">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle"
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar contenido..."
+            aria-label="Buscar contenido"
+            className="h-10 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-sm text-fg transition-colors placeholder:text-fg-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+          />
+        </div>
 
-              <label className="relative h-9 shrink-0">
-                <select
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value)}
-                  className="h-9 appearance-none rounded-lg border border-slate-300 bg-white pl-4 pr-10 text-sm font-medium transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                  <option value="recent">Ordenar por: Recientes</option>
-                  <option value="views">Ordenar por: Mas vistos</option>
-                  <option value="title">Ordenar por: Titulo</option>
-                  <option value="category">Ordenar por: Categoria</option>
-                </select>
-                <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg">
-                  expand_more
-                </span>
-              </label>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-              <CategoryTreeFilter
-                categories={categories}
-                videos={items}
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-              />
-
-              <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-8">
-                {loading && filteredTutorials.length === 0 ? (
-                  <div className="col-span-full py-10 text-center text-text-light-secondary dark:text-dark-secondary">
-                    Cargando contenido...
-                  </div>
-                ) : !error && videos.length === 0 ? (
-                  <div className="col-span-full flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border-light bg-card-light p-10 text-center dark:border-border-dark dark:bg-card-dark">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <span className="material-symbols-outlined text-3xl">video_library</span>
-                    </div>
-                    <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-                      No hay contenido registrado
-                    </h2>
-                    <p className="mt-2 max-w-md text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                      Agrega tu primer contenido para que aparezca en la biblioteca de guias visuales.
-                    </p>
-                    {canManageContent && (
-                      <button
-                        type="button"
-                        onClick={handleOpenCreate}
-                        className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-md transition hover:bg-primary/90"
-                      >
-                        <span className="material-symbols-outlined text-lg">add</span>
-                        Agregar contenido
-                      </button>
-                    )}
-                  </div>
-                ) : filteredTutorials.length === 0 ? (
-                  <div className="col-span-full py-10 text-center text-text-light-secondary dark:text-dark-secondary">
-                    No hay contenido que coincida con la busqueda.
-                  </div>
-                ) : (
-                  paginatedTutorials.map((tutorial, index) => (
-                    <Link
-                      key={tutorial.id ?? index}
-                      to="/video"
-                      state={tutorial}
-                      className="group block w-full max-w-[340px] justify-self-center transition-transform duration-300 hover:scale-[1.03]"
-                    >
-                      <VideoCard
-                        title={tutorial.title}
-                        category={tutorial.category}
-                        duration={tutorial.duration}
-                        imageUrl={tutorial.imageUrl}
-                        isMaterialOnly={tutorial.isMaterialOnly}
-                        materials={tutorial.materials}
-                      />
-                      <div className="mt-2 flex items-center gap-1 text-sm font-bold text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                        <span className="material-symbols-outlined text-base">
-                          {tutorial.isMaterialOnly ? getMaterialFormat(tutorial.materials[0]).icon : "play_circle"}
-                        </span>
-                        {tutorial.isMaterialOnly ? "Ver material de apoyo" : "Ver paso a paso"}
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <Pagination
-              page={currentPage}
-              totalItems={filteredTutorials.length}
-              pageSize={PAGE_SIZE}
-              onPageChange={setCurrentPage}
-            />
-
-            {canManageContent && isModalOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <button
-                  type="button"
-                  className="absolute inset-0 bg-black/50"
-                  onClick={handleCloseModal}
-                  aria-label="Cerrar modal"
-                />
-
-                <div className="relative w-full max-w-3xl rounded-xl bg-card-light p-6 shadow-lg dark:bg-card-dark border border-border-light dark:border-border-dark">
-                  <div className="flex items-start justify-between gap-4 mb-6">
-                    <div>
-                      <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-                        Agregar contenido multimedia
-                      </h2>
-                      <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-                        Completa la informacion del contenido. Puedes registrar archivos de apoyo aunque no haya video.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background-light text-text-light-secondary transition-colors hover:bg-primary/10 hover:text-primary dark:bg-background-dark dark:text-dark-secondary dark:hover:bg-primary/20 dark:hover:text-primary"
-                      aria-label="Cerrar"
-                      disabled={loading}
-                    >
-                      <span className="material-symbols-outlined text-xl">close</span>
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6" noValidate>
-                    <Input
-                      label="Titulo"
-                      name="title"
-                      value={form.title}
-                      onChange={handleChange}
-                      disabled={loading}
-                    />
-
-                    <Select
-                      label="Categoria"
-                      name="categoryId"
-                      value={form.categoryId}
-                      onChange={handleChange}
-                      disabled={loading}
-                      options={categories.map((category) => ({
-                        value: category.id,
-                        label: category.categoryName,
-                      }))}
-                    />
-
-                    <div className="md:col-span-2">
-                      <Textarea
-                        label="Descripcion"
-                        name="description"
-                        value={form.description}
-                        onChange={handleChange}
-                        disabled={loading}
-                        required={false}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <Input
-                        label="URL del video"
-                        name="urlVideo"
-                        value={form.urlVideo}
-                        onChange={handleChange}
-                        disabled={loading}
-                        placeholder="https://..."
-                        required={false}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <FileInput
-                        label="Materiales de apoyo"
-                        name="materials"
-                        files={form.materials}
-                        onChange={handleFileChange}
-                        disabled={loading}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2 flex justify-end gap-4 mt-4">
-                      <button
-                        type="button"
-                        onClick={handleCloseModal}
-                        className="px-6 py-2 rounded-lg bg-surface-light dark:bg-surface-dark font-semibold"
-                        disabled={loading}
-                      >
-                        Cancelar
-                      </button>
-
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-8 py-2 rounded-lg bg-primary text-white font-bold shadow-md hover:bg-primary/90 transition disabled:opacity-50"
-                      >
-                        {loading ? "Guardando..." : "Guardar"}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
+        <Select
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value)}
+          aria-label="Ordenar contenidos"
+          wrapperClassName="w-full sm:w-56"
+          className="h-10 py-0"
+        >
+          <option value="recent">Ordenar por: Recientes</option>
+          <option value="views">Ordenar por: Más vistos</option>
+          <option value="title">Ordenar por: Título</option>
+          <option value="category">Ordenar por: Categoría</option>
+        </Select>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <CategoryTreeFilter
+          categories={categories}
+          videos={items}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
+
+        <div className="min-w-0">
+          {loading && filteredTutorials.length === 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <CardSkeleton key={index} />
+              ))}
+            </div>
+          ) : !error && videos.length === 0 ? (
+            <EmptyState
+              icon="video_library"
+              title="No hay contenido registrado"
+              description="Agrega tu primer contenido para que aparezca en la biblioteca de guías visuales."
+              action={
+                canManageContent ? (
+                  <Button icon="add" onClick={handleOpenCreate}>
+                    Agregar contenido
+                  </Button>
+                ) : null
+              }
+            />
+          ) : filteredTutorials.length === 0 ? (
+            <EmptyState icon="search_off" title="Sin resultados" description="No hay contenido que coincida con la búsqueda." />
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
+              {paginatedTutorials.map((tutorial, index) => (
+                <Link
+                  key={tutorial.id ?? index}
+                  to="/video"
+                  state={tutorial}
+                  className="group block h-full rounded-xl focus:outline-none"
+                >
+                  <VideoCard
+                    title={tutorial.title}
+                    category={tutorial.category}
+                    duration={tutorial.duration}
+                    imageUrl={tutorial.imageUrl}
+                    description={tutorial.description}
+                    isMaterialOnly={tutorial.isMaterialOnly}
+                    materials={tutorial.materials}
+                  />
+                  <div className="mt-2 flex items-center gap-1 text-sm font-bold text-brand-ink opacity-0 transition-opacity group-hover:opacity-100">
+                    <Icon
+                      name={tutorial.isMaterialOnly ? getMaterialFormat(tutorial.materials[0]).icon : "play_circle"}
+                      size={16}
+                    />
+                    {tutorial.isMaterialOnly ? "Ver material de apoyo" : "Ver paso a paso"}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Pagination
+        page={currentPage}
+        totalItems={filteredTutorials.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+        itemLabel="contenidos"
+      />
+
+      {/* Alta de contenido */}
+      <Modal
+        open={canManageContent && isModalOpen}
+        onClose={handleCloseModal}
+        dismissible={!loading}
+        size="lg"
+        icon="add_to_queue"
+        title="Agregar contenido multimedia"
+        subtitle="Completa la información del contenido. Puedes registrar archivos de apoyo aunque no haya video."
+        footer={
+          <>
+            <Button variant="outline" onClick={handleCloseModal} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="create-content-form" icon="save" loading={loading}>
+              {loading ? "Guardando..." : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-content-form" onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2" noValidate>
+          <Input
+            label="Título"
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            disabled={loading}
+            required
+          />
+
+          <Select
+            label="Categoría"
+            name="categoryId"
+            value={form.categoryId}
+            onChange={handleChange}
+            disabled={loading}
+            required
+          >
+            <option value="">Seleccionar...</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.categoryName}
+              </option>
+            ))}
+          </Select>
+
+          <Textarea
+            label="Descripción"
+            name="description"
+            rows={4}
+            value={form.description}
+            onChange={handleChange}
+            disabled={loading}
+            wrapperClassName="md:col-span-2"
+          />
+
+          <Input
+            label="URL del video"
+            name="urlVideo"
+            placeholder="https://..."
+            value={form.urlVideo}
+            onChange={handleChange}
+            disabled={loading}
+            wrapperClassName="md:col-span-2"
+          />
+
+          <MaterialFileInput
+            label="Materiales de apoyo"
+            files={form.materials}
+            onChange={handleFileChange}
+            disabled={loading}
+            className="md:col-span-2"
+          />
+        </form>
+      </Modal>
     </div>
   );
 }
 
-const Input = ({ label, type = "text", required = true, disabled = false, ...props }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-semibold">{label}</label>
-    <input type={type} {...props} className="input" required={required} disabled={disabled} />
-  </div>
-);
+/* ============================== subcomponentes ============================== */
 
-const Select = ({ label, options, disabled = false, ...props }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-semibold">{label}</label>
-    <select {...props} className="input" required disabled={disabled}>
-      <option value="">Seleccionar...</option>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+const MaterialFileInput = ({ label, files = [], disabled = false, className = "", onChange }) => (
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    <span className="text-[13px] font-semibold text-fg">{label}</span>
 
-const Textarea = ({ label, required = true, disabled = false, rows = 4, ...props }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-semibold">{label}</label>
-    <textarea {...props} rows={rows} className="input resize-none" required={required} disabled={disabled} />
-  </div>
-);
+    <label
+      className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-3 text-sm font-semibold transition-colors ${
+        disabled
+          ? "cursor-not-allowed border-line bg-subtle text-fg-subtle"
+          : "border-brand/40 bg-brand-soft/60 text-brand-ink hover:border-brand hover:bg-brand-soft"
+      }`}
+    >
+      <Icon name="upload_file" size={18} />
+      Seleccionar archivos
+      <input
+        type="file"
+        accept={ACCEPTED_MATERIAL_TYPES}
+        multiple
+        disabled={disabled}
+        className="hidden"
+        onChange={onChange}
+      />
+    </label>
 
-const FileInput = ({ label, files = [], disabled = false, ...props }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-semibold">{label}</label>
-    <input
-      {...props}
-      type="file"
-      accept={ACCEPTED_MATERIAL_TYPES}
-      multiple
-      className="input file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-white"
-      disabled={disabled}
-    />
-    <p className="text-xs text-text-light-secondary dark:text-dark-secondary">
-      Formatos permitidos: PDF, Word, Excel, JPG, PNG y WEBP.
-    </p>
+    <p className="text-xs text-fg-subtle">Formatos permitidos: PDF, Word, Excel, JPG, PNG y WEBP.</p>
+
     {files.length > 0 && (
-      <div className="flex flex-wrap gap-2">
+      <ul className="flex flex-wrap gap-2">
         {files.map((file) => {
           const format = getMaterialFormat(file);
           return (
-            <span
+            <li
               key={`${file.name}-${file.size}`}
               title={file.name}
               className={`inline-flex max-w-full items-center gap-1 rounded-lg px-3 py-1 text-xs font-semibold sm:max-w-xs ${format.tone}`}
             >
-              <span className="material-symbols-outlined shrink-0 text-sm">{format.icon}</span>
+              <Icon name={format.icon} size={14} className="shrink-0" />
               <span className="shrink-0 font-black">{format.label}</span>
               <span className="min-w-0 truncate">{file.name}</span>
-            </span>
+            </li>
           );
         })}
-      </div>
+      </ul>
     )}
   </div>
 );
-
-let youtubeApiPromise;
-
-const loadYouTubeApi = () => {
-  if (window.YT?.Player) {
-    return Promise.resolve(window.YT);
-  }
-
-  if (youtubeApiPromise) {
-    return youtubeApiPromise;
-  }
-
-  youtubeApiPromise = new Promise((resolve) => {
-    const previousCallback = window.onYouTubeIframeAPIReady;
-
-    window.onYouTubeIframeAPIReady = () => {
-      previousCallback?.();
-      resolve(window.YT);
-    };
-
-    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-      const script = document.createElement("script");
-      script.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(script);
-    }
-  });
-
-  return youtubeApiPromise;
-};
-
-const getYouTubeDuration = async (videoId) => {
-  if (!videoId) return null;
-
-  try {
-    const YT = await loadYouTubeApi();
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "-9999px";
-    container.style.top = "-9999px";
-    document.body.appendChild(container);
-
-    return await new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        player?.destroy();
-        container.remove();
-        resolve(null);
-      }, 8000);
-
-      let player = new YT.Player(container, {
-        width: "1",
-        height: "1",
-        videoId,
-        events: {
-          onReady: (event) => {
-            const duration = event.target.getDuration();
-            clearTimeout(timeout);
-            event.target.destroy();
-            container.remove();
-            resolve(duration);
-          },
-          onError: () => {
-            clearTimeout(timeout);
-            player?.destroy();
-            container.remove();
-            resolve(null);
-          },
-        },
-      });
-    });
-  } catch {
-    return null;
-  }
-};
-
-const formatDuration = (seconds) => {
-  if (!seconds || Number.isNaN(seconds)) return null;
-
-  const totalSeconds = Math.round(seconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const remainingSeconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
-  }
-
-  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-};
-
-const normalizeRole = (role) =>
-  String(role || "USER")
-    .replace(/^ROLE_/i, "")
-    .toUpperCase();
 
 const paginate = (items, page, pageSize) => {
   const start = (page - 1) * pageSize;

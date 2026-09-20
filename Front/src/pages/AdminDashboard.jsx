@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
 import Pagination from "../components/Pagination";
 import SegmentedControl from "../components/SegmentedControl";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Icon,
+  LoadingLine,
+  Modal,
+  PageHeader,
+  Select,
+  Stat,
+} from "../components/ui";
 import UserService from "../services/UserService";
 import VideoService from "../services/VideoService";
 import VideoStatsService from "../services/VideoStatsService";
 import { getMaterialFormatsSummary } from "../utils/materialFormats";
+import { getUserName, formatNumber } from "../utils/format";
+import { normalizeRole, roleLabel, roleTone } from "../utils/role";
 import {
   parseDateInput,
   buildDateRangeLabel,
@@ -14,6 +28,10 @@ import {
 } from "../utils/periodFilters";
 
 const PAGE_SIZE = 6;
+
+const dateInputClasses =
+  "h-9 w-[8.5rem] rounded-lg border border-line bg-surface px-2.5 text-sm text-fg transition-colors " +
+  "focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
 
 const AdminDashboard = () => {
   const [videos, setVideos] = useState([]);
@@ -195,166 +213,148 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen w-full font-display bg-background-light text-text-light-primary dark:bg-background-dark dark:text-text-dark-primary">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <Header />
-        <main className="flex-1 p-8">
-          <div className="mx-auto flex max-w-7xl flex-col gap-8">
-            <div>
-              <h1 className="text-3xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
-                Panel Administrativo
-              </h1>
-              <p className="mt-2 text-text-secondary-light dark:text-text-secondary-dark">
-                Historico y analitica de consumo de contenido.
-              </p>
-            </div>
+    <>
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          eyebrow="Administración"
+          title="Panel administrativo"
+          description="Histórico y analítica de consumo de contenido."
+          actions={
+            <Button icon="download" onClick={exportReport} disabled={analytics.videoRows.length === 0}>
+              Exportar reporte
+            </Button>
+          }
+        />
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
-                <SegmentedControl
-                  value={periodPreset}
-                  onChange={applyPeriodPreset}
-                  options={[
-                    ["all", "Todo"],
-                    ["thisMonth", "Este mes"],
-                    ["lastMonth", "Mes anterior"],
-                    ["custom", "Personalizado"],
-                  ]}
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <Card className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <SegmentedControl
+              value={periodPreset}
+              onChange={applyPeriodPreset}
+              options={[
+                ["all", "Todo"],
+                ["thisMonth", "Este mes"],
+                ["lastMonth", "Mes anterior"],
+                ["custom", "Personalizado"],
+              ]}
+            />
+
+            {periodPreset === "custom" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  aria-label="Desde"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={handleManualDateChange(setDateFrom)}
+                  className={dateInputClasses}
                 />
-
-                {periodPreset === "custom" && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      aria-label="Desde"
-                      value={dateFrom}
-                      max={dateTo || undefined}
-                      onChange={handleManualDateChange(setDateFrom)}
-                      className="input h-9 w-[8.5rem]"
-                    />
-                    <span className="text-text-secondary-light dark:text-text-secondary-dark">–</span>
-                    <input
-                      type="date"
-                      aria-label="Hasta"
-                      value={dateTo}
-                      min={dateFrom || undefined}
-                      onChange={handleManualDateChange(setDateTo)}
-                      className="input h-9 w-[8.5rem]"
-                    />
-                  </div>
-                )}
-
-                <div className="h-6 w-px bg-border-light dark:bg-border-dark" />
-
-                <SegmentedControl
-                  value={filterType}
-                  onChange={(value) => {
-                    setFilterType(value);
-                    setFilterValue("");
-                    setCurrentPage(1);
-                  }}
-                  options={[
-                    ["all", "Todos"],
-                    ["category", "Categoria"],
-                    ["user", "Usuario"],
-                  ]}
+                <span className="text-fg-muted">–</span>
+                <input
+                  type="date"
+                  aria-label="Hasta"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={handleManualDateChange(setDateTo)}
+                  className={dateInputClasses}
                 />
-
-                {filterType !== "all" && (
-                  <select
-                    value={filterValue}
-                    onChange={(event) => {
-                      setFilterValue(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="input h-9 w-48"
-                  >
-                    <option value="">
-                      {filterType === "category" ? "Selecciona una categoria" : "Selecciona un usuario"}
-                    </option>
-                    {(filterType === "category" ? categoryOptions : userOptions).map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearAllFilters}
-                    className="group inline-flex items-center gap-1 text-sm font-bold text-primary"
-                  >
-                    <span className="material-symbols-outlined text-lg">filter_alt_off</span>
-                    <span className="group-hover:underline">Limpiar filtros</span>
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={exportReport}
-                disabled={analytics.videoRows.length === 0}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-white shadow-md transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="material-symbols-outlined text-lg">download</span>
-                Exportar reporte
-              </button>
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-                {error}
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                icon="visibility"
-                title="Visualizaciones"
-                value={analytics.metrics.totalViews.toLocaleString("es-CO")}
-                detail={`${analytics.metrics.uniqueViewers} usuarios unicos`}
-              />
-              <MetricCard
-                icon="schedule"
-                title="Tiempo visto"
-                value={formatHours(analytics.metrics.watchTimeSeconds)}
-                detail={`${analytics.metrics.avgMinutesPerView} min por vista`}
-              />
-              <MetricCard
-                icon="trending_up"
-                title="Contenido con uso"
-                value={`${analytics.metrics.contentWithViews}/${analytics.metrics.totalContent}`}
-                detail={`${analytics.metrics.contentWithoutViews} sin visualizaciones`}
-              />
-              <MetricCard
-                icon="group"
-                title="Usuarios activos"
-                value={analytics.metrics.activeUsers.toLocaleString("es-CO")}
-                detail={`${analytics.metrics.viewerCoverage}% han visto contenido`}
-              />
-            </div>
+            <div className="h-6 w-px bg-line" />
 
-            {loading ? (
-              <div className="rounded-xl border border-border-light bg-card-light p-10 text-center text-text-secondary-light shadow-sm dark:border-border-dark dark:bg-card-dark dark:text-text-secondary-dark">
-                Cargando metricas...
-              </div>
-            ) : (
-              <SummaryView
-                analytics={analytics}
-                paginatedVideoRows={paginatedVideoRows}
-                currentPage={currentPage}
-                onPageChange={(page) =>
-                  setCurrentPage(clampPage(page, analytics.videoRows.length, PAGE_SIZE))
-                }
-                onSelectContent={(row) => setSelectedContentId(row.id)}
-                isUserFiltered={isUserFiltered}
-              />
+            <SegmentedControl
+              value={filterType}
+              onChange={(value) => {
+                setFilterType(value);
+                setFilterValue("");
+                setCurrentPage(1);
+              }}
+              options={[
+                ["all", "Todos"],
+                ["category", "Categoría"],
+                ["user", "Usuario"],
+              ]}
+            />
+
+            {filterType !== "all" && (
+              <Select
+                aria-label={filterType === "category" ? "Selecciona una categoría" : "Selecciona un usuario"}
+                value={filterValue}
+                onChange={(event) => {
+                  setFilterValue(event.target.value);
+                  setCurrentPage(1);
+                }}
+                wrapperClassName="w-48"
+              >
+                <option value="">
+                  {filterType === "category" ? "Selecciona una categoría" : "Selecciona un usuario"}
+                </option>
+                {(filterType === "category" ? categoryOptions : userOptions).map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" icon="filter_alt_off" onClick={clearAllFilters}>
+                Limpiar filtros
+              </Button>
             )}
           </div>
-        </main>
+        </Card>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Stat
+            icon="visibility"
+            tone="brand"
+            label="Visualizaciones"
+            value={formatNumber(analytics.metrics.totalViews)}
+            footer={`${analytics.metrics.uniqueViewers} usuarios únicos`}
+          />
+          <Stat
+            icon="schedule"
+            tone="success"
+            label="Tiempo visto"
+            value={formatHours(analytics.metrics.watchTimeSeconds)}
+            footer={`${analytics.metrics.avgMinutesPerView} min por vista`}
+          />
+          <Stat
+            icon="trending_up"
+            tone="warning"
+            label="Contenido con uso"
+            value={`${analytics.metrics.contentWithViews}/${analytics.metrics.totalContent}`}
+            footer={`${analytics.metrics.contentWithoutViews} sin visualizaciones`}
+          />
+          <Stat
+            icon="group"
+            tone="neutral"
+            label="Usuarios activos"
+            value={formatNumber(analytics.metrics.activeUsers)}
+            footer={`${analytics.metrics.viewerCoverage}% han visto contenido`}
+          />
+        </section>
+
+        {loading ? (
+          <Card>
+            <LoadingLine label="Cargando métricas..." />
+          </Card>
+        ) : (
+          <SummaryView
+            analytics={analytics}
+            paginatedVideoRows={paginatedVideoRows}
+            currentPage={currentPage}
+            onPageChange={(page) =>
+              setCurrentPage(clampPage(page, analytics.videoRows.length, PAGE_SIZE))
+            }
+            onSelectContent={(row) => setSelectedContentId(row.id)}
+            isUserFiltered={isUserFiltered}
+          />
+        )}
       </div>
 
       {selectedContentRow && (
@@ -365,7 +365,7 @@ const AdminDashboard = () => {
           onExport={() => exportContentReport(selectedContentRow, selectedContentUserRows)}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -373,298 +373,273 @@ const SummaryView = ({ analytics, paginatedVideoRows, currentPage, onPageChange,
   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <section className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Tendencia mensual" subtitle="Visualizaciones registradas por mes">
-          <TrendChart data={analytics.trendRows} />
-        </Panel>
-        <Panel title="Categorias con mayor uso" subtitle="Participacion por visualizaciones">
-          <HorizontalBarChart
-            data={analytics.categoryRows.slice(0, 6)}
-            valueKey="views"
-            labelKey="category"
-            emptyText="Todavia no hay visualizaciones por categoria."
+        <Card>
+          <CardHeader icon="show_chart" title="Tendencia mensual" subtitle="Visualizaciones registradas por mes" />
+          <div className="mt-5">
+            <TrendChart data={analytics.trendRows} />
+          </div>
+        </Card>
+        <Card>
+          <CardHeader
+            icon="category"
+            title="Categorías con mayor uso"
+            subtitle="Participación por visualizaciones"
           />
-        </Panel>
+          <div className="mt-5">
+            <HorizontalBarChart
+              data={analytics.categoryRows.slice(0, 6)}
+              valueKey="views"
+              labelKey="category"
+              emptyText="Todavía no hay visualizaciones por categoría."
+            />
+          </div>
+        </Card>
       </div>
 
-      <Panel title="Rendimiento por contenido" subtitle="Clic en un contenido para ver el detalle por usuario">
+      <Card padded={false} className="overflow-hidden">
+        <div className="border-b border-line px-5 py-4">
+          <CardHeader
+            icon="bar_chart"
+            title="Rendimiento por contenido"
+            subtitle="Clic en un contenido para ver el detalle por usuario"
+          />
+        </div>
         <ContentTable rows={paginatedVideoRows} onSelectContent={onSelectContent} />
         <Pagination
           page={currentPage}
           totalItems={analytics.videoRows.length}
           pageSize={PAGE_SIZE}
           onPageChange={onPageChange}
+          itemLabel="contenidos"
         />
-      </Panel>
+      </Card>
     </section>
 
     <aside className="flex flex-col gap-6">
-      <Panel title="Lecturas rapidas" subtitle="Hallazgos utiles del periodo">
-        <div className="flex flex-col gap-3">
+      <Card>
+        <CardHeader icon="lightbulb" title="Lecturas rápidas" subtitle="Hallazgos útiles del período" />
+        <div className="mt-5 flex flex-col gap-3">
           {analytics.insights.map((insight) => (
             <InsightCard key={insight.title} insight={insight} />
           ))}
         </div>
-      </Panel>
+      </Card>
 
       {!isUserFiltered && (
         <>
-          <Panel title="Top usuarios" subtitle="Personas con mayor actividad">
-            <div className="flex flex-col gap-3">
+          <Card>
+            <CardHeader icon="military_tech" title="Top usuarios" subtitle="Personas con mayor actividad" />
+            <div className="mt-5 flex flex-col gap-3">
               {analytics.userRows.slice(0, 5).length === 0 ? (
-                <EmptyState text="No hay actividad de usuarios en este periodo." />
+                <EmptyState
+                  icon="group_off"
+                  title="Sin actividad"
+                  description="No hay actividad de usuarios en este período."
+                />
               ) : (
                 analytics.userRows.slice(0, 5).map((user, index) => (
                   <RankItem
                     key={user.id}
                     index={index}
                     title={user.name}
-                    detail={`${user.views} vistas | ${formatMinutes(user.watchTimeSeconds)}`}
+                    detail={`${user.views} vistas · ${formatMinutes(user.watchTimeSeconds)}`}
                   />
                 ))
               )}
             </div>
-          </Panel>
+          </Card>
 
-          <Panel title="Cobertura de usuarios" subtitle="Relacion entre usuarios y consumo">
-            <CoverageMeter value={analytics.metrics.viewerCoverage} />
-          </Panel>
+          <Card>
+            <CardHeader icon="donut_large" title="Cobertura de usuarios" subtitle="Relación entre usuarios y consumo" />
+            <div className="mt-5">
+              <CoverageMeter value={analytics.metrics.viewerCoverage} />
+            </div>
+          </Card>
 
-          <Panel title="Usuarios sin actividad" subtitle="Candidatos para acompanamiento">
-            <div className="flex flex-col gap-3">
+          <Card>
+            <CardHeader icon="person_off" title="Usuarios sin actividad" subtitle="Candidatos para acompañamiento" />
+            <div className="mt-5 flex flex-col gap-3">
               {analytics.inactiveUsers.slice(0, 8).length === 0 ? (
-                <EmptyState text="Todos los usuarios han tenido actividad registrada." />
+                <EmptyState
+                  icon="task_alt"
+                  title="Todos con actividad"
+                  description="Todos los usuarios han tenido actividad registrada."
+                />
               ) : (
                 analytics.inactiveUsers.slice(0, 8).map((user) => (
-                  <div key={user.id} className="rounded-lg border border-border-light p-3 dark:border-border-dark">
-                    <p className="font-semibold">{getUserName(user)}</p>
-                    <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
-                      {normalizeRole(user.role?.roleName)}
-                    </p>
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line p-3"
+                  >
+                    <p className="min-w-0 truncate font-semibold text-fg">{getUserName(user)}</p>
+                    <Badge tone={roleTone(user.role?.roleName)} size="sm">
+                      {roleLabel(user.role?.roleName)}
+                    </Badge>
                   </div>
                 ))
               )}
             </div>
-          </Panel>
+          </Card>
         </>
       )}
     </aside>
   </div>
 );
 
-const MetricCard = ({ icon, title, value, detail }) => (
-  <div className="rounded-xl border border-border-light bg-card-light p-5 shadow-sm dark:border-border-dark dark:bg-card-dark">
-    <div className="mb-4 flex items-center justify-between">
-      <div className="rounded-lg bg-primary/10 p-2 text-primary">
-        <span className="material-symbols-outlined">{icon}</span>
+const STATUS_TONES = {
+  Alto: "success",
+  Medio: "brand",
+  Bajo: "warning",
+  "Sin uso": "danger",
+};
+
+const statusTone = (status) => STATUS_TONES[status] || "neutral";
+
+const ContentTable = ({ rows, onSelectContent }) => {
+  if (rows.length === 0) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon="insights"
+          title="No hay contenido registrado"
+          description="No hay contenido registrado para mostrar estadísticas."
+        />
       </div>
-    </div>
-    <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{title}</p>
-    <p className="mt-1 text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
-      {value}
-    </p>
-    <p className="mt-2 text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">
-      {detail}
-    </p>
-  </div>
-);
+    );
+  }
 
-const Panel = ({ title, subtitle, children }) => (
-  <section className="overflow-hidden rounded-xl border border-border-light bg-card-light shadow-sm dark:border-border-dark dark:bg-card-dark">
-    <div className="border-b border-border-light p-5 dark:border-border-dark">
-      <h2 className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">{title}</h2>
-      {subtitle && (
-        <p className="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">{subtitle}</p>
-      )}
-    </div>
-    <div className="p-5">{children}</div>
-  </section>
-);
-
-const ContentTable = ({ rows, onSelectContent }) => (
-  <div className="overflow-x-auto">
-    <table className="w-full text-left">
-      <thead className="bg-surface-light text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:bg-surface-dark dark:text-text-secondary-dark">
-        <tr>
-          <th className="px-5 py-3">Contenido</th>
-          <th className="px-5 py-3">Categoria</th>
-          <th className="px-5 py-3">Tipo</th>
-          <th className="px-5 py-3 text-right">Vistas</th>
-          <th className="px-5 py-3 text-right">Usuarios</th>
-          <th className="px-5 py-3 text-right">Tiempo</th>
-          <th className="px-5 py-3">Ultima actividad</th>
-          <th className="px-5 py-3">Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
+  return (
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
           <tr>
-            <td colSpan="8" className="px-5 py-10 text-center text-text-secondary-light dark:text-text-secondary-dark">
-              No hay contenido registrado para mostrar estadisticas.
-            </td>
+            <th>Contenido</th>
+            <th>Categoría</th>
+            <th>Tipo</th>
+            <th className="text-right">Vistas</th>
+            <th className="text-right">Usuarios</th>
+            <th className="text-right">Tiempo</th>
+            <th>Última actividad</th>
+            <th>Estado</th>
           </tr>
-        ) : (
-          rows.map((row) => (
-            <tr
-              key={row.id}
-              onClick={() => onSelectContent?.(row)}
-              className="cursor-pointer border-b border-border-light transition last:border-b-0 hover:bg-primary/5 dark:border-border-dark dark:hover:bg-primary/10"
-            >
-              <td className="min-w-56 px-5 py-4 font-semibold text-primary">{row.title}</td>
-              <td className="px-5 py-4">{row.category}</td>
-              <td className="px-5 py-4">{row.type}</td>
-              <td className="px-5 py-4 text-right font-bold">{row.views.toLocaleString("es-CO")}</td>
-              <td className="px-5 py-4 text-right">{row.uniqueUsers}</td>
-              <td className="px-5 py-4 text-right">{formatMinutes(row.watchTimeSeconds)}</td>
-              <td className="px-5 py-4">{formatDate(row.lastViewAt)}</td>
-              <td className="px-5 py-4">
-                <StatusPill status={row.status} />
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} onClick={() => onSelectContent?.(row)} className="cursor-pointer">
+              <td className="min-w-56 font-semibold text-brand-ink">{row.title}</td>
+              <td className="text-fg-muted">{row.category}</td>
+              <td className="text-fg-muted">{row.type}</td>
+              <td className="text-right font-bold text-fg">{formatNumber(row.views)}</td>
+              <td className="text-right text-fg-muted">{row.uniqueUsers}</td>
+              <td className="text-right text-fg-muted">{formatMinutes(row.watchTimeSeconds)}</td>
+              <td className="text-fg-muted">{formatDate(row.lastViewAt)}</td>
+              <td>
+                <Badge tone={statusTone(row.status)}>{row.status}</Badge>
               </td>
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-);
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const ContentDetailModal = ({ row, userRows, onClose, onExport }) => (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-    <button
-      type="button"
-      className="absolute inset-0 bg-black/55"
-      onClick={onClose}
-      aria-label="Cerrar detalle de contenido"
-    />
+  <Modal
+    open
+    onClose={onClose}
+    icon="movie"
+    size="lg"
+    title={row.title}
+    subtitle={`${row.category} · ${row.type}`}
+    footer={
+      <>
+        <Button variant="outline" onClick={onClose}>
+          Cerrar
+        </Button>
+        <Button icon="download" onClick={onExport} disabled={userRows.length === 0}>
+          Exportar reporte
+        </Button>
+      </>
+    }
+  >
+    <div className="grid gap-3 sm:grid-cols-4">
+      <DetailStat label="Vistas" value={formatNumber(row.views)} />
+      <DetailStat label="Usuarios únicos" value={row.uniqueUsers} />
+      <DetailStat label="Tiempo visto" value={formatMinutes(row.watchTimeSeconds)} />
+      <DetailStat label="Estado" value={<Badge tone={statusTone(row.status)}>{row.status}</Badge>} />
+    </div>
 
-    <div
-      className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border-light bg-card-light shadow-xl dark:border-border-dark dark:bg-card-dark"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="content-detail-title"
-    >
-      <div className="flex items-start justify-between gap-4 border-b border-border-light p-6 dark:border-border-dark">
-        <div className="min-w-0">
-          <h2 id="content-detail-title" className="truncate text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-            {row.title}
-          </h2>
-          <p className="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-            {row.category} &middot; {row.type}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-lg p-2 text-text-secondary-light transition hover:bg-surface-light dark:text-text-secondary-dark dark:hover:bg-surface-dark"
-          aria-label="Cerrar"
-        >
-          <span className="material-symbols-outlined">close</span>
-        </button>
+    {userRows.length > 0 && (
+      <div className="mt-4 flex items-start gap-3 rounded-lg border border-line bg-subtle p-4">
+        <Icon name="insights" size={20} className="mt-0.5 shrink-0 text-brand-ink" />
+        <p className="text-sm leading-6 text-fg-muted">
+          <span className="font-bold text-fg">{userRows[0].name}</span>{" "}
+          (rol {userRows[0].role}) es quien mas consulta este contenido, con {userRows[0].views}{" "}
+          {userRows[0].views === 1 ? "vista" : "vistas"} y {formatMinutes(userRows[0].watchTimeSeconds)}.
+        </p>
       </div>
+    )}
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <DetailStat label="Vistas" value={row.views.toLocaleString("es-CO")} />
-          <DetailStat label="Usuarios unicos" value={row.uniqueUsers} />
-          <DetailStat label="Tiempo visto" value={formatMinutes(row.watchTimeSeconds)} />
-          <DetailStat label="Estado" value={<StatusPill status={row.status} />} />
-        </div>
-
-        {userRows.length > 0 && (
-          <div className="mt-4 flex items-start gap-3 rounded-lg border border-border-light bg-surface-light p-4 dark:border-border-dark dark:bg-surface-dark">
-            <span className="material-symbols-outlined text-primary">insights</span>
-            <p className="text-sm leading-6 text-text-secondary-light dark:text-text-secondary-dark">
-              <span className="font-bold text-text-primary-light dark:text-text-primary-dark">
-                {userRows[0].name}
-              </span>{" "}
-              (rol {userRows[0].role}) es quien mas consulta este contenido, con {userRows[0].views}{" "}
-              {userRows[0].views === 1 ? "vista" : "vistas"} y {formatMinutes(userRows[0].watchTimeSeconds)}.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-surface-light text-xs font-bold uppercase tracking-wider text-text-secondary-light dark:bg-surface-dark dark:text-text-secondary-dark">
+    <div className="mt-6">
+      {userRows.length === 0 ? (
+        <EmptyState
+          icon="visibility_off"
+          title="Sin visualizaciones en el período"
+          description="Este contenido todavía no tiene visualizaciones en el período seleccionado."
+        />
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3 text-right">Vistas</th>
-                <th className="px-4 py-3 text-right">Tiempo</th>
-                <th className="px-4 py-3">Ultima actividad</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th className="text-right">Vistas</th>
+                <th className="text-right">Tiempo</th>
+                <th>Última actividad</th>
               </tr>
             </thead>
             <tbody>
-              {userRows.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-4 py-8 text-center text-text-secondary-light dark:text-text-secondary-dark">
-                    Este contenido todavia no tiene visualizaciones en el periodo seleccionado.
+              {userRows.map((user) => (
+                <tr key={user.id}>
+                  <td className="font-semibold text-fg">{user.name}</td>
+                  <td>
+                    <Badge tone={roleTone(user.role)} size="sm">
+                      {user.role}
+                    </Badge>
                   </td>
+                  <td className="text-right font-bold text-fg">{user.views}</td>
+                  <td className="text-right text-fg-muted">{formatMinutes(user.watchTimeSeconds)}</td>
+                  <td className="text-fg-muted">{formatDate(user.lastViewAt)}</td>
                 </tr>
-              ) : (
-                userRows.map((user) => (
-                  <tr key={user.id} className="border-b border-border-light last:border-b-0 dark:border-border-dark">
-                    <td className="px-4 py-3 font-semibold">{user.name}</td>
-                    <td className="px-4 py-3">{user.role}</td>
-                    <td className="px-4 py-3 text-right font-bold">{user.views}</td>
-                    <td className="px-4 py-3 text-right">{formatMinutes(user.watchTimeSeconds)}</td>
-                    <td className="px-4 py-3">{formatDate(user.lastViewAt)}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div className="flex justify-end gap-3 border-t border-border-light p-4 dark:border-border-dark">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg bg-surface-light px-4 py-2 text-sm font-semibold transition hover:bg-slate-100 dark:bg-surface-dark dark:hover:bg-slate-800"
-        >
-          Cerrar
-        </button>
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={userRows.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span className="material-symbols-outlined text-lg">download</span>
-          Exportar reporte
-        </button>
-      </div>
+      )}
     </div>
-  </div>
+  </Modal>
 );
 
 const DetailStat = ({ label, value }) => (
-  <div className="rounded-lg border border-border-light p-3 dark:border-border-dark">
-    <p className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">{label}</p>
-    <p className="mt-1 text-lg font-bold text-text-primary-light dark:text-text-primary-dark">{value}</p>
+  <div className="rounded-lg border border-line p-3">
+    <p className="text-xs font-medium text-fg-subtle">{label}</p>
+    <p className="mt-1 text-lg font-bold text-fg">{value}</p>
   </div>
 );
-
-const StatusPill = ({ status }) => {
-  const styles = {
-    Alto: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300",
-    Medio: "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300",
-    Bajo: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300",
-    "Sin uso": "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300",
-  };
-
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${styles[status] || styles.Bajo}`}>
-      {status}
-    </span>
-  );
-};
 
 const TrendChart = ({ data, showViewers = false }) => {
   const maxViews = Math.max(...data.map((row) => row.views), 1);
 
   if (data.length === 0) {
-    return <EmptyState text="No hay datos historicos para graficar." />;
+    return (
+      <EmptyState
+        icon="show_chart"
+        title="Sin datos históricos"
+        description="No hay datos históricos para graficar."
+      />
+    );
   }
 
   return (
@@ -678,20 +653,18 @@ const TrendChart = ({ data, showViewers = false }) => {
             <div className="flex h-56 items-end gap-1">
               {showViewers && (
                 <div
-                  className="w-4 rounded-t bg-slate-300 dark:bg-slate-600"
+                  className="w-4 rounded-t bg-subtle"
                   style={{ height: `${viewerHeight}px` }}
                   title={`${row.viewers} usuarios`}
                 />
               )}
               <div
-                className="w-6 rounded-t bg-primary"
+                className="w-6 rounded-t bg-brand"
                 style={{ height: `${height}px` }}
                 title={`${row.views} visualizaciones`}
               />
             </div>
-            <p className="text-xs font-bold text-text-secondary-light dark:text-text-secondary-dark">
-              {row.shortLabel}
-            </p>
+            <p className="text-xs font-bold text-fg-muted">{row.shortLabel}</p>
           </div>
         );
       })}
@@ -703,13 +676,13 @@ const HorizontalBarChart = ({
   data,
   labelKey,
   valueKey,
-  valueFormatter = (value) => Number(value || 0).toLocaleString("es-CO"),
+  valueFormatter = formatNumber,
   emptyText,
 }) => {
   const max = Math.max(...data.map((row) => Number(row[valueKey] || 0)), 1);
 
   if (data.length === 0) {
-    return <EmptyState text={emptyText} />;
+    return <EmptyState icon="bar_chart" title="Sin datos" description={emptyText} />;
   }
 
   return (
@@ -721,11 +694,11 @@ const HorizontalBarChart = ({
         return (
           <div key={row[labelKey]} className="grid gap-2">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="truncate font-semibold">{row[labelKey]}</span>
-              <span className="shrink-0 font-bold text-primary">{valueFormatter(value)}</span>
+              <span className="truncate font-semibold text-fg">{row[labelKey]}</span>
+              <span className="shrink-0 font-bold text-brand-ink">{valueFormatter(value)}</span>
             </div>
-            <div className="h-3 rounded-full bg-surface-light dark:bg-surface-dark">
-              <div className="h-3 rounded-full bg-primary" style={{ width: `${width}%` }} />
+            <div className="h-3 rounded-full bg-subtle">
+              <div className="h-3 rounded-full bg-brand" style={{ width: `${width}%` }} />
             </div>
           </div>
         );
@@ -737,44 +710,38 @@ const HorizontalBarChart = ({
 const CoverageMeter = ({ value }) => (
   <div>
     <div className="flex items-end justify-between">
-      <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">Usuarios con actividad</p>
-      <p className="text-3xl font-bold text-primary">{value}%</p>
+      <p className="text-sm text-fg-muted">Usuarios con actividad</p>
+      <p className="text-3xl font-bold text-brand-ink">{value}%</p>
     </div>
-    <div className="mt-4 h-4 rounded-full bg-surface-light dark:bg-surface-dark">
-      <div className="h-4 rounded-full bg-primary" style={{ width: `${Math.min(value, 100)}%` }} />
+    <div className="mt-4 h-4 rounded-full bg-subtle">
+      <div className="h-4 rounded-full bg-brand" style={{ width: `${Math.min(value, 100)}%` }} />
     </div>
   </div>
 );
 
 const InsightCard = ({ insight }) => (
-  <div className="rounded-lg border border-border-light p-4 dark:border-border-dark">
+  <div className="rounded-lg border border-line p-4">
     <div className="flex items-start gap-3">
-      <span className="material-symbols-outlined text-primary">{insight.icon}</span>
-      <div>
-        <p className="font-bold">{insight.title}</p>
-        <p className="mt-1 text-sm leading-6 text-text-secondary-light dark:text-text-secondary-dark">
-          {insight.text}
-        </p>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-ink">
+        <Icon name={insight.icon} size={18} />
+      </span>
+      <div className="min-w-0">
+        <p className="font-bold text-fg">{insight.title}</p>
+        <p className="mt-1 text-sm leading-6 text-fg-muted">{insight.text}</p>
       </div>
     </div>
   </div>
 );
 
 const RankItem = ({ index, title, detail }) => (
-  <div className="flex items-center gap-3 rounded-lg border border-border-light p-3 dark:border-border-dark">
-    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
+  <div className="flex items-center gap-3 rounded-lg border border-line p-3">
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-sm font-bold text-brand-ink">
       {index + 1}
     </div>
     <div className="min-w-0">
-      <p className="truncate font-semibold">{title}</p>
-      <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">{detail}</p>
+      <p className="truncate font-semibold text-fg">{title}</p>
+      <p className="text-xs text-fg-muted">{detail}</p>
     </div>
-  </div>
-);
-
-const EmptyState = ({ text }) => (
-  <div className="rounded-lg border border-dashed border-border-light p-6 text-center text-sm text-text-secondary-light dark:border-border-dark dark:text-text-secondary-dark">
-    {text}
   </div>
 );
 
@@ -1073,16 +1040,6 @@ const getPeriodDate = (stat) => {
   const [year, month] = getPeriodKey(stat).split("-").map(Number);
   return new Date(year, month - 1, 1);
 };
-
-const getUserName = (user) => {
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
-  return fullName || user?.email || "Usuario";
-};
-
-const normalizeRole = (role) =>
-  String(role || "USER")
-    .replace(/^ROLE_/i, "")
-    .toUpperCase();
 
 const formatPeriod = (stat) =>
   new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(getPeriodDate(stat));
